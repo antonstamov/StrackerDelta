@@ -103,31 +103,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          # No -e: the job writes what went wrong into the summary, which is the
-          # one place a failure can be read without a login.
-          set -uo pipefail
+          ls -l dist
 
-          {
-            echo "### publish release"
-            echo
-            echo "- tag: \`$TAG\`"
-            echo "- gh: $(gh --version | head -n1)"
-            echo "- runner: $(uname -sr)"
-            echo
-            echo "dist:"
-            echo '```'
-            ls -l dist 2>&1 || true
-            echo '```'
-            echo
-          } >> "$GITHUB_STEP_SUMMARY"
-
+          # set +e: the point is to capture what gh says, not to abort on it.
+          set +e
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/*.zip dist/SHA256SUMS --clobber 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+            out=$(gh release upload "$TAG" dist/*.zip dist/SHA256SUMS --clobber 2>&1)
           else
-            gh release create "$TAG" dist/*.zip dist/SHA256SUMS \
+            out=$(gh release create "$TAG" dist/*.zip dist/SHA256SUMS \
               --title "$TAG" \
-              --generate-notes 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+              --generate-notes 2>&1)
           fi
-          status=${PIPESTATUS[0]}
-          echo "gh exit code: $status" >> "$GITHUB_STEP_SUMMARY"
+          status=$?
+
+          if [ $status -ne 0 ]; then
+            # a workflow annotation is readable without signing in, the log is not
+            echo "::error title=gh release failed (exit $status)::$out"
+          else
+            echo "$out"
+          fi
           exit $status
