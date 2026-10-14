@@ -29,10 +29,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
 
@@ -75,7 +75,7 @@ jobs:
           "$hash  $($zip.Name)" | Set-Content -LiteralPath dist\SHA256SUMS -Encoding ascii
 
       - name: Upload the package
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: package
           path: |
@@ -93,7 +93,7 @@ jobs:
     steps:
       # gh ships with the runner: no third party action in a job that can write.
       - name: Download the package
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: package
           path: dist
@@ -103,17 +103,31 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          set -euo pipefail
-          zip=$(ls dist/*.zip)
-          test -f dist/SHA256SUMS
+          # No -e: the job writes what went wrong into the summary, which is the
+          # one place a failure can be read without a login.
+          set -uo pipefail
 
-          # --generate-notes writes the changes since the previous release tag.
-          # A tag that already has a release is updated instead of failing, so a
-          # rerun finishes what the first attempt started.
+          {
+            echo "### publish release"
+            echo
+            echo "- tag: \`$TAG\`"
+            echo "- gh: $(gh --version | head -n1)"
+            echo "- runner: $(uname -sr)"
+            echo
+            echo "dist:"
+            echo '```'
+            ls -l dist 2>&1 || true
+            echo '```'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$zip" dist/SHA256SUMS --clobber
-            echo "updated the release of $TAG"
+            gh release upload "$TAG" dist/*.zip dist/SHA256SUMS --clobber 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           else
-            gh release create "$TAG" "$zip" dist/SHA256SUMS --title "$TAG" --generate-notes
-            echo "released $TAG"
+            gh release create "$TAG" dist/*.zip dist/SHA256SUMS \
+              --title "$TAG" \
+              --generate-notes 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+          status=${PIPESTATUS[0]}
+          echo "gh exit code: $status" >> "$GITHUB_STEP_SUMMARY"
+          exit $status
