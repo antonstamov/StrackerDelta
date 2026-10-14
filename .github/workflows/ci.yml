@@ -66,6 +66,8 @@ jobs:
         shell: pwsh
         run: |
           $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
+          if (-not $zip) { throw "pack.cmd reported success but wrote nothing: $(Get-ChildItem dist | ForEach-Object { $_.Name })" }
+
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $archive = [System.IO.Compression.ZipFile]::OpenRead($zip.FullName)
           try { $names = @($archive.Entries | ForEach-Object { $_.FullName }) } finally { $archive.Dispose() }
@@ -79,7 +81,7 @@ jobs:
             'apps/lua/StrackerDelta/modules/stracker.lua',
             'apps/lua/StrackerDelta/modules/html.lua',
             'apps/lua/StrackerDelta/modules/lap.lua',
-            'apps/lua/StrackerDelta/modules/addresses.lua',
+            'apps/lua/StrackerDelta/modules/addresses.lua'
           )
 
           $bad = $names | Where-Object { $_ -match '\\' }

@@ -64,7 +64,10 @@ jobs:
         shell: pwsh
         run: |
           $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
-          if ($zip.Name -notlike "* v${{ github.ref_name }}.zip") {
+          if (-not $zip) { throw "pack.cmd reported success but wrote nothing" }
+
+          # github.ref_name of tag v0.1.0 is v0.1.0, the v is already in it.
+          if ($zip.Name -notlike "* ${{ github.ref_name }}.zip") {
             Write-Host "built $($zip.Name), expected the version of the tag" -ForegroundColor Red
             exit 1
           }
