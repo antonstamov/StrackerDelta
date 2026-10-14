@@ -102,15 +102,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           ls -l dist
 
+          # This job has no checkout on purpose: the token that can write should not
+          # sit next to a copy of the source. gh cannot guess the repository without
+          # a git remote, so it is told which one to talk to.
+          #
           # set +e: the point is to capture what gh says, not to abort on it.
           set +e
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            out=$(gh release upload "$TAG" dist/*.zip dist/SHA256SUMS --clobber 2>&1)
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            out=$(gh release upload "$TAG" dist/*.zip dist/SHA256SUMS --repo "$REPO" --clobber 2>&1)
           else
             out=$(gh release create "$TAG" dist/*.zip dist/SHA256SUMS \
+              --repo "$REPO" \
               --title "$TAG" \
               --generate-notes 2>&1)
           fi
