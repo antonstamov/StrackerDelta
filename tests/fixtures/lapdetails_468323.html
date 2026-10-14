@@ -1,0 +1,751 @@
+
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="googlebot" content="noindex, nofollow">
+
+    <!-- Include Twitter Bootstrap and jQuery: -->
+
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap-multiselect.css" type="text/css"/>
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap-datepicker.css" type="text/css"/>
+    <link rel="stylesheet" href="/bootstrap/css/sticky-footer.css" type="text/css"/>
+    <link rel="stylesheet" href="/bootstrap/css/fileinput.min.css" media="all" type="text/css" />
+
+    <script src="/jquery/jquery.min.js"></script>
+    <script src="/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/bootstrap/js/bootstrap-multiselect.js"></script>
+    <script type="text/javascript" src="/bootstrap/js/bootstrap-datepicker.js"></script>
+    <script src="/bootstrap/js/fileinput.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="/pygal/svg.jquery.js"></script>
+    <script type="text/javascript" src="/pygal/pygal-tooltips.min.js"></script>
+
+    <title>Laps</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/img/brand_icon_small_wob.png">
+
+    <style>
+
+        .aids {
+            width:16px;
+            height:16px;
+            background:none left top no-repeat;
+            display:inline-block;
+            background-size:cover;
+            margin-right:-3px;
+            margin-left:-3px;
+            margin-top:-3px;
+            margin-bottom:-3px;
+        }
+
+        .aids.autoclutch.off { background-image:url(/img/icn_stability_off.png) }
+        .aids.autoclutch.on  { background-image:url(/img/icn_stability_on.png) }
+        .aids.autoclutch.unknown { background-image:url(/img/icn_stability_unknown.png) }
+
+        .aids.abs.off { background-image:url(/img/icn_abs_off.png) }
+        .aids.abs.factory { background-image:url(/img/icn_abs_factory.png) }
+        .aids.abs.on { background-image:url(/img/icn_abs_on.png) }
+        .aids.abs.unknown { background-image:url(/img/icn_abs_unknown.png) }
+
+        .aids.autobrake.off { background-image:url(/img/icn_automaticbraking_off.png) }
+        .aids.autobrake.on { background-image:url(/img/icn_automaticbraking_on.png) }
+        .aids.autobrake.unknown { background-image:url(/img/icn_automaticbraking_unknown.png) }
+
+        .aids.autogearbox.off { background-image:url(/img/icn_gearbox_off.png) }
+        .aids.autogearbox.on { background-image:url(/img/icn_gearbox_on.png) }
+        .aids.autogearbox.unknown { background-image:url(/img/icn_gearbox_unknown.png) }
+
+        .aids.blip.off { background-image:url(/img/icn_heeltoe_off.png) }
+        .aids.blip.on { background-image:url(/img/icn_heeltoe_on.png) }
+        .aids.blip.unknown { background-image:url(/img/icn_heeltoe_unknown.png) }
+
+        .aids.idealline.off { background-image:url(/img/icn_idealline_off.png) }
+        .aids.idealline.on { background-image:url(/img/icn_idealline_on.png) }
+        .aids.idealline.unknown { background-image:url(/img/icn_idealline_unknown.png) }
+
+        .aids.tc.off { background-image:url(/img/icn_tractioncontrol_off.png) }
+        .aids.tc.factory { background-image:url(/img/icn_tractioncontrol_factory.png) }
+        .aids.tc.on { background-image:url(/img/icn_tractioncontrol_on.png) }
+        .aids.tc.unknown { background-image:url(/img/icn_tractioncontrol_unknown.png) }
+
+        .aids.damage.off { background-image:url(/img/icn_stability_off.png) }
+        .aids.damage.on { background-image:url(/img/icn_stability_on.png) }
+        .aids.damage.unknown { background-image:url(/img/icn_stability_unknown.png) }
+
+        .bestLap { color:#ff00ff }
+        .bestSector { color:#00c000 }
+
+        .multiselect {
+            text-align: left;
+        }
+        .multiselect b.caret {
+            position: absolute;
+            top: 14px;
+            right: 8px;
+        }
+        .multiselect-container>li>a>label>input[type=checkbox]{margin-bottom:0px}
+
+        .table-condensed>thead>tr>th,
+        .table-condensed>tbody>tr>th,
+        .table-condensed>tfoot>tr>th,
+        .table-condensed>thead>tr>td,
+        .table-condensed>tbody>tr>td,
+        .table-condensed>tfoot>tr>td {
+            padding: 2px;
+        }
+        .clickableRow td {
+            cursor: pointer;
+            cursor: hand;
+        }
+        .clickableRow td.noclick {
+            cursor: auto;
+        }
+        .table tbody>tr>td.vert-align {
+            vertical-align: middle;
+        }
+        .table thead>tr>th.vert-align {
+            vertical-align: middle;
+        }
+        .navbar-fixed-bottom {
+            z-index: 900;
+        }
+    </style>
+    <link rel="stylesheet" href="/bootstrap/css/custom.css" media="all" type="text/css" />
+</head>
+<body>
+
+
+<nav class="navbar navbar-inverse" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/"><img class="img-responsive" alt="stracker" src="/img/brand_icon_large_wob.png" /></a>
+    </div>
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li class="active"><a href="/lapstat">Lap Times</a></li>
+        <li ><a href="/sessionstat">Sessions</a></li>
+        <li ><a href="/players">Drivers</a></li>
+        <li ><a href="/championship">Championships</a></li>
+        <li ><a href="/statistics">Statistics</a></li>
+        <li ><a href="/livemap">Live Map</a></li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+
+
+
+
+  
+<div class="container">
+    <div class="row page-header">
+        <div class="col-md-6"><img src="/img/banner.png" title="Logo Track" class="ACimg"></div>
+        <div class="col-md-6">
+            <div class="row">
+                <div class="col-md-4 col-md-offset-8">
+                    <button class="form-control btn btn-sm btn-primary" onclick="window.history.back()">
+                        Back
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3">
+            <table class="table table-striped table-condensed table-bordered table-hover">
+                <caption>Driver/combo information</caption>
+                <tbody>
+                    <tr><td>Name</td><td>Dana Whitfield</td></tr>
+                    <tr><td>Driver type</td><td>human driver</td></tr>
+                    <tr><td>Track</td><td>rmi_nelson_ledges</td></tr>
+                    <tr><td>Car</td><td>    ac_legends_gtc_corvette_63
+</td></tr>
+                    <tr><td>Laps (total)</td><td>141</td></tr>
+                    <tr><td>Laps (valid)</td><td>96</td></tr>
+                    <tr><td>Laps (unknown)</td><td>0</td></tr>
+                    <tr><td>Best lap time</td><td>01:17.857</td></tr>
+                    <tr><td>Theoretical best</td><td>01:17.671</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-3">
+             <table class="table table-striped table-condensed table-bordered table-hover">
+              <caption>Lap information</caption>
+                <tbody>
+                    <tr><td>Lap time</td><td>01:18.149</td></tr>
+                    <tr><td>Achieved on</td><td>2026-10-10 18:21</td></tr>
+                    <tr><td>Valid</td><td>yes</td></tr>
+                    <tr><td>Cuts</td><td>0</td></tr>
+                    <tr><td>Maximum Speed</td><td>218 km/h</td></tr>
+                    <tr><td>Pit Lane Time</td><td>-</td></tr>
+                    <tr><td>Pit Time</td><td>-</td></tr>
+                    <tr><td>Tyres used</td><td>GT60 (V)</td></tr>
+                    <tr><td>Grip level</td><td>95.6 %</td></tr>
+                    <tr><td>Fuel load</td><td>10.5 %</td></tr>
+                    <tr><td>Car collisions</td><td>0</td></tr>
+                    <tr><td>Env collisions</td><td>0</td></tr>
+                    <tr><td>Ballast</td><td>0.0 kg</td></tr>
+                    <tr><td>Sector 1</td><td>00:18.808 (+00.159)</td></tr>
+                    <tr><td>Sector 2</td><td>00:30.492 (+00.184)</td></tr>
+                    <tr><td>Sector 3</td><td>00:28.849 (+00.135)</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-3">
+            <table class="table table-striped table-condensed table-bordered table-hover">
+                <caption>Session information</caption>
+                <tbody>
+                    <tr><td>Penalties</td><td>yes</td></tr>
+                    <tr><td>Limit on tyres out</td><td>3</td></tr>
+                    <tr><td>Tyre wear factor</td><td>1.0 x</td></tr>
+                    <tr><td>Fuel rate</td><td>1.0 x</td></tr>
+                    <tr><td>Mechanical damage</td><td>100 %</td></tr>
+                    <tr><td>Ambient temperature</td><td>24 °C</td></tr>
+                    <tr><td>Track temperature</td><td>30 °C</td></tr>
+                    <tr><td>Input method</td><td>wheel</td></tr>
+                    <tr><td>Shifter used</td><td>other</td></tr>
+                    <tr><td>AC version</td><td>1.16.4</td></tr>
+                    <tr><td>ptracker version</td><td>3.4.0 </td></tr>
+                    <tr><td>stracker version</td><td>3.5.1</td></tr>
+                    <tr><td>Server name</td><td>SRV1</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-3">
+            <table class="table table-striped table-condensed table-bordered table-hover">
+                <caption>Aid information</caption>
+                <tbody>
+                    <tr><td>ABS</td><td>Factory [level: 0.00]</td></tr>
+                    <tr><td>Traction control</td><td>Factory [level: 0.00]</td></tr>
+                    <tr><td>Automatic heeltoe</td><td>Off</td></tr>
+                    <tr><td>Automatic brake</td><td>Off</td></tr>
+                    <tr><td>Automatic clutch</td><td>Off</td></tr>
+                    <tr><td>Automatic gearbox</td><td>Off</td></tr>
+                    <tr><td>Ideal line</td><td>Off</td></tr>
+                    <tr><td>Stability control</td><td>  0 %</td></tr>
+                    <tr><td>Slip stream</td><td>1.0 x</td></tr>
+                    <tr><td>Tyre blankets</td><td>Off</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+function updateComparison() {
+    var cbPSB = document.getElementById("cbPSB").checked;
+    var cbSB = document.getElementById("cbSB").checked;
+    var cbPB = document.getElementById("cbPB").checked;
+    var cbB = document.getElementById("cbB").checked;
+    var cbM = document.getElementById("cbM").checked;
+    var url = '/lapdetails?lapid=468323&cmpbits=' + (cbPSB | (cbSB << 1) | (cbPB << 2) | (cbB << 3) | (cbM << 4)).toString();
+    window.location=url;
+    return false;
+}
+    </script>
+    <div class="row">
+        <hr>
+        <div class="col-md-8 col-md-offset-0">
+            <div>
+                <svg class="pygal-chart" id="chart-06b0541c-6197-49a6-9386-199a53259bd8" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"><!--Generated with pygal 2.1.1 (etree) ©Kozea 2011-2015 on 2026-10-13--><!--http://pygal.org--><!--http://github.com/Kozea/pygal--><defs><style type="text/css">
+/*
+ * This file is part of pygal
+ *
+ * A python svg graph plotting library
+ * Copyright (c) 2012 Kozea
+
+ * This library is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with pygal. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+*/
+
+/*
+ * Font-sizes from config, override with care
+ */
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8  {
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .title {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 16px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .legends .legend text {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 14px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis text {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 10px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis text.major {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 10px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .text-overlay text.value {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 16px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .text-overlay text.label {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 10px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 14px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 text.no_data {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 64px;
+}
+
+/*
+ * This file is part of pygal
+ *
+ * A python svg graph plotting library
+ * Copyright (c) 2012 Kozea
+
+ * This library is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with pygal. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+*/
+
+/*
+ * Styles from config
+ */
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 {
+  background-color: transparent;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 path,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 rect,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 circle {
+  -webkit-transition: 150ms;
+  -moz-transition: 150ms;
+  transition: 150ms;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .graph &gt; .background {
+  fill: transparent;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .plot &gt; .background {
+  fill: rgba(240, 240, 240, 0.7);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .graph {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 text.no_data {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .title {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .legends .legend text {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .legends .legend:hover text {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .line {
+  stroke: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .guide.line {
+  stroke: rgba(0, 0, 0, 0.5);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .major.line {
+  stroke: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis text.major {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y .guides:hover .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .line-graph .axis.x .guides:hover .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .stackedline-graph .axis.x .guides:hover .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .xy-graph .axis.x .guides:hover .guide.line {
+  stroke: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .guides:hover text {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .reactive {
+  fill-opacity: .7;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .ci {
+    stroke: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .reactive.active,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .active .reactive {
+  fill-opacity: .8;
+  stroke-width: 4;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .series text {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip rect {
+  fill: rgba(240, 240, 240, 0.7);
+  stroke: rgba(0, 0, 0, 0.9);
+  -webkit-transition: opacity 150ms;
+  -moz-transition: opacity 150ms;
+  transition: opacity 150ms;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip .label {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip .label {
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip .legend {
+  font-size: .8em;
+  fill: rgba(0, 0, 0, 0.5);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip .x_label {
+  font-size: .6em;
+  fill: rgba(0, 0, 0, 0.9);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip .xlink {
+  font-size: .5em;
+  text-decoration: underline;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip .value {
+  font-size: 1.5em;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .map-element {
+  fill: rgba(240, 240, 240, 0.7);
+  stroke: rgba(0, 0, 0, 0.5) !important;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .map-element .reactive {
+  fill-opacity: inherit;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .color-0, #chart-06b0541c-6197-49a6-9386-199a53259bd8 .color-0 a:visited {
+  stroke: rgb(12,55,149);
+  fill: rgb(12,55,149);
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8  .text-overlay .color-0 text {
+  fill: black;
+}
+
+
+
+
+/*
+ * This file is part of pygal
+ *
+ * A python svg graph plotting library
+ * Copyright (c) 2012 Kozea
+
+ * This library is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with pygal. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+*/
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 text.no_data {
+  text-anchor: middle;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .guide.line {
+  fill: none;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .centered {
+  text-anchor: middle;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .title {
+  text-anchor: middle;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .legends .legend text {
+  fill-opacity: 1;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.x text {
+  text-anchor: middle;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.x:not(.web) text[transform] {
+  text-anchor: start;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.x:not(.web) text[transform].backwards {
+  text-anchor: end;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y text {
+  text-anchor: end;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y text[transform].backwards {
+  text-anchor: start;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y2 text {
+  text-anchor: start;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y2 text[transform].backwards {
+  text-anchor: end;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .guide.line {
+  stroke-dasharray: 4,4;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .major.guide.line {
+  stroke-dasharray: 6,6;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .horizontal .axis.y .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .horizontal .axis.y2 .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .vertical .axis.x .guide.line {
+  opacity: 0;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .horizontal .axis.always_show .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .vertical .axis.always_show .guide.line {
+  opacity: 1 !important;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y .guides:hover .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.y2 .guides:hover .guide.line,
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis.x .guides:hover .guide.line {
+  opacity: 1;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .axis .guides:hover text {
+  opacity: 1;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .nofill {
+  fill: none;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .subtle-fill {
+  fill-opacity: .2;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .dot {
+  stroke-width: 1px;
+  fill-opacity: 1;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .dot.active {
+  stroke-width: 5px;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .dot.negative {
+  fill: transparent;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8  text, #chart-06b0541c-6197-49a6-9386-199a53259bd8  tspan {
+  stroke: none !important;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .series text.active {
+  opacity: 1;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip rect {
+  fill-opacity: .95;
+  stroke-width: .5;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .tooltip text {
+  fill-opacity: 1;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .showable {
+  visibility: hidden;
+}
+
+#chart-06b0541c-6197-49a6-9386-199a53259bd8 .showable.shown {
+  visibility: visible;
+}
+</style><script type="text/javascript">window.pygal = window.pygal || {};window.pygal.config = window.pygal.config || {};window.pygal.config['06b0541c-6197-49a6-9386-199a53259bd8'] = {"show_minor_y_labels": true, "tooltip_border_radius": 10, "force_uri_protocol": null, "half_pie": false, "stack_from_top": false, "max_scale": 16, "margin_bottom": null, "show_dots": true, "show_minor_x_labels": true, "dynamic_print_values": false, "legend_at_bottom_columns": null, "strict": false, "value_formatter": null, "disable_xml_declaration": true, "margin_left": null, "background_image": null, "height": 600, "rounded_bars": null, "spacing": 10, "legends": ["C:01:18.15 by Dana Whitfield"], "include_x_axis": true, "no_data_text": "No data", "xrange": null, "min_scale": 4, "show_only_major_dots": false, "range": null, "stroke": true, "preserve_aspect": false, "inner_radius": 0, "margin_right": null, "show_x_labels": true, "interpolate": "hermite", "x_labels_major": null, "x_label_rotation": 0, "y_labels_major": null, "css": ["&lt;unknown type&gt;", "&lt;unknown type&gt;"], "secondary_range": null, "print_values_position": "center", "x_labels_major_every": null, "y_labels_major_count": null, "y_label_rotation": 0, "no_prefix": false, "logarithmic": false, "order_min": null, "explicit_size": false, "legend_at_bottom": true, "title": "Lap Comparison ac_legends_gtc_corvette_63 @ rmi_nelson_ledges", "defs": [], "stroke_style": null, "truncate_legend": 30, "x_labels_major_count": null, "interpolation_precision": 10, "y_title": "Velocity [km/h]", "style": {"major_label_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "colors": ["rgb(12,55,149)", "rgb(117,38,65)", "rgb(228,127,0)", "rgb(159,170,0)", "rgb(149,12,12)"], "guide_stroke_dasharray": "4,4", "value_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "tooltip_font_size": 14, "label_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "legend_font_size": 14, "plot_background": "rgba(240, 240, 240, 0.7)", "legend_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "opacity_hover": ".8", "value_colors": [], "font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "major_guide_stroke_dasharray": "6,6", "value_label_font_size": 10, "major_label_font_size": 10, "foreground_strong": "rgba(0, 0, 0, 0.9)", "background": "transparent", "transition": "150ms", "foreground_subtle": "rgba(0, 0, 0, 0.5)", "title_font_size": 16, "tooltip_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "title_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "value_label_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "ci_colors": [], "opacity": ".7", "no_data_font_size": 64, "value_font_size": 16, "no_data_font_family": "Consolas, \"Liberation Mono\", Menlo, Courier, monospace", "label_font_size": 10, "foreground": "rgba(0, 0, 0, 0.9)"}, "x_title": "Track Position [m]", "print_labels": false, "zero": 0, "x_value_formatter": null, "show_x_guides": false, "human_readable": false, "box_mode": "extremes", "x_labels": null, "print_values": false, "margin_top": null, "tooltip_fancy_mode": true, "inverse_y_axis": false, "fill": false, "show_y_labels": true, "interpolation_parameters": {}, "legend_box_size": 12, "missing_value_fill_truncation": "x", "pretty_print": true, "margin": 20, "y_labels_major_every": null, "y_labels": null, "show_legend": true, "truncate_label": null, "dots_size": 1, "show_y_guides": true, "js": [], "print_zeroes": true, "width": 800}</script></defs><g class="graph xy-graph vertical"><rect class="background" height="600" width="800" x="0" y="0" /><g class="plot" transform="translate(74, 46)"><rect class="background" height="464.0" width="706.0" x="0" y="0" /><g class="axis y"><g class="guides"><path class="axis major line" d="M0 455.08 h706" /><text class="major" x="-5" y="458.5769230769231">0</text><title>0</title></g><g class="guides"><path class="guide line" d="M0 414.08 h706" /><text class="" x="-5" y="417.5780327132046">20</text><title>20</title></g><g class="guides"><path class="guide line" d="M0 373.08 h706" /><text class="" x="-5" y="376.5791423494862">40</text><title>40</title></g><g class="guides"><path class="guide line" d="M0 332.08 h706" /><text class="" x="-5" y="335.58025198576775">60</text><title>60</title></g><g class="guides"><path class="guide line" d="M0 291.08 h706" /><text class="" x="-5" y="294.58136162204926">80</text><title>80</title></g><g class="guides"><path class="major guide line" d="M0 250.08 h706" /><text class="major" x="-5" y="253.58247125833083">100</text><title>100</title></g><g class="guides"><path class="guide line" d="M0 209.08 h706" /><text class="" x="-5" y="212.58358089461237">120</text><title>120</title></g><g class="guides"><path class="guide line" d="M0 168.08 h706" /><text class="" x="-5" y="171.5846905308939">140</text><title>140</title></g><g class="guides"><path class="guide line" d="M0 127.09 h706" /><text class="" x="-5" y="130.58580016717542">160</text><title>160</title></g><g class="guides"><path class="guide line" d="M0 86.09 h706" /><text class="" x="-5" y="89.58690980345699">180</text><title>180</title></g><g class="guides"><path class="major guide line" d="M0 45.09 h706" /><text class="major" x="-5" y="48.5880194397385">200</text><title>200</title></g></g><g class="axis x"><path class="line" d="M0 0 v464" /><g class="guides"><path class="guide line" d="M80.06 0 v464" /><text class="" x="80.05837972682971" y="479.0">0.1</text><title>0.1</title></g><g class="guides"><path class="guide line" d="M148.52 0 v464" /><text class="" x="148.51640073754623" y="479.0">0.2</text><title>0.2</title></g><g class="guides"><path class="guide line" d="M216.97 0 v464" /><text class="" x="216.97442174826273" y="479.0">0.3</text><title>0.3</title></g><g class="guides"><path class="guide line" d="M285.43 0 v464" /><text class="" x="285.4324427589793" y="479.0">0.4</text><title>0.4</title></g><g class="guides"><path class="guide line" d="M353.89 0 v464" /><text class="" x="353.89046376969577" y="479.0">0.5</text><title>0.5</title></g><g class="guides"><path class="guide line" d="M422.35 0 v464" /><text class="" x="422.34848478041226" y="479.0">0.6</text><title>0.6</title></g><g class="guides"><path class="guide line" d="M490.81 0 v464" /><text class="" x="490.80650579112876" y="479.0">0.7</text><title>0.7</title></g><g class="guides"><path class="guide line" d="M559.26 0 v464" /><text class="" x="559.2645268018454" y="479.0">0.8</text><title>0.8</title></g><g class="guides"><path class="guide line" d="M627.72 0 v464" /><text class="" x="627.7225478125619" y="479.0">0.9</text><title>0.9</title></g></g><g class="series serie-0 color-0"><path class="line reactive nofill" d="M13.58 105.78 L14.82 105.43 16.06 104.47 17.3 103.01 18.55 101.16 19.79 99.04 21.03 96.74 22.27 94.4 23.51 92.1 24.76 89.98 26 88.14 27.3 86.13 28.6 83.74 29.9 81.12 31.2 78.47 32.5 75.95 33.8 73.75 35.1 72.04 36.4 71.01 37.7 70.82 39 71.66 40.32 73.58 41.64 76.37 42.97 79.94 44.29 84.15 45.61 88.89 46.94 94.06 48.26 99.53 49.59 105.2 50.91 110.94 52.23 116.64 53.13 120.82 54.03 125.61 54.93 130.85 55.83 136.36 56.73 142 57.63 147.6 58.53 153 59.43 158.04 60.33 162.56 61.23 166.4 62.04 169.22 62.86 171.52 63.67 173.38 64.49 174.91 65.3 176.19 66.11 177.32 66.93 178.4 67.74 179.52 68.56 180.78 69.37 182.27 70.17 184.01 70.96 186 71.75 188.14 72.54 190.31 73.34 192.43 74.13 194.39 74.92 196.09 75.71 197.43 76.51 198.31 77.3 198.62 78.22 198.34 79.13 197.54 80.05 196.3 80.97 194.72 81.89 192.86 82.81 190.8 83.72 188.64 84.64 186.44 85.56 184.29 86.48 182.27 87.46 180.14 88.45 177.89 89.44 175.54 90.42 173.13 91.41 170.68 92.39 168.21 93.38 165.75 94.37 163.33 95.35 160.97 96.34 158.69 97.25 156.65 98.16 154.65 99.07 152.67 99.98 150.73 100.89 148.81 101.8 146.91 102.71 145.03 103.62 143.16 104.53 141.31 105.44 139.47 106.56 136.96 107.69 134.06 108.82 130.95 109.94 127.81 111.07 124.79 112.19 122.08 113.32 119.84 114.45 118.23 115.57 117.44 116.7 117.63 117.83 118.9 118.96 121.13 120.09 124.17 121.23 127.83 122.36 131.98 123.49 136.44 124.62 141.05 125.75 145.66 126.88 150.1 128.01 154.2 128.88 157.37 129.74 160.88 130.6 164.61 131.46 168.42 132.32 172.19 133.18 175.8 134.05 179.12 134.91 182.03 135.77 184.4 136.63 186.1 137.56 187.23 138.5 187.8 139.43 187.88 140.36 187.57 141.3 186.94 142.23 186.07 143.16 185.06 144.1 183.98 145.03 182.91 145.97 181.95 146.92 180.99 147.88 179.93 148.84 178.78 149.8 177.54 150.76 176.2 151.72 174.77 152.68 173.25 153.64 171.64 154.6 169.94 155.56 168.15 156.62 165.89 157.68 163.25 158.74 160.36 159.79 157.33 160.85 154.3 161.91 151.38 162.97 148.7 164.03 146.39 165.09 144.57 166.15 143.36 167.05 142.77 167.96 142.47 168.86 142.48 169.77 142.81 170.68 143.48 171.58 144.48 172.49 145.85 173.39 147.58 174.3 149.69 175.2 152.2 175.86 154.55 176.51 157.58 177.17 161.16 177.82 165.15 178.48 169.42 179.13 173.82 179.79 178.22 180.45 182.48 181.1 186.47 181.76 190.05 182.63 194.51 183.5 199.02 184.37 203.53 185.23 207.96 186.1 212.26 186.97 216.36 187.84 220.21 188.71 223.74 189.58 226.89 190.45 229.6 191.1 231.22 191.75 232.44 192.4 233.3 193.04 233.86 193.69 234.14 194.34 234.2 194.99 234.08 195.64 233.82 196.29 233.47 196.93 233.08 197.59 232.52 198.25 231.7 198.9 230.66 199.56 229.45 200.22 228.13 200.88 226.74 201.53 225.33 202.19 223.96 202.85 222.67 203.5 221.52 204.36 220.15 205.22 218.83 206.08 217.54 206.94 216.27 207.79 215.01 208.65 213.75 209.51 212.48 210.37 211.19 211.22 209.86 212.08 208.5 212.81 207.31 213.53 206.11 214.26 204.88 214.98 203.64 215.71 202.38 216.44 201.11 217.16 199.82 217.89 198.51 218.61 197.2 219.34 195.88 220.27 194.16 221.2 192.41 222.13 190.64 223.05 188.85 223.98 187.05 224.91 185.25 225.84 183.46 226.77 181.69 227.7 179.94 228.62 178.21 229.47 176.64 230.32 175.04 231.17 173.44 232.02 171.85 232.87 170.28 233.72 168.74 234.57 167.25 235.42 165.83 236.27 164.49 237.12 163.24 238.14 161.89 239.16 160.71 240.18 159.64 241.2 158.65 242.22 157.68 243.24 156.71 244.26 155.68 245.28 154.54 246.3 153.27 247.32 151.8 248.4 150.04 249.48 148.12 250.56 146.07 251.64 143.92 252.72 141.71 253.8 139.47 254.88 137.23 255.96 135.02 257.04 132.88 258.11 130.84 259.32 128.61 260.53 126.37 261.74 124.12 262.94 121.89 264.15 119.7 265.36 117.56 266.56 115.49 267.77 113.51 268.98 111.64 270.18 109.89 271.2 108.48 272.22 107.13 273.24 105.84 274.26 104.62 275.28 103.5 276.3 102.48 277.32 101.59 278.34 100.83 279.36 100.21 280.38 99.76 281.42 99.42 282.46 99.15 283.49 98.99 284.53 98.94 285.56 99.04 286.6 99.31 287.64 99.77 288.67 100.44 289.71 101.35 290.74 102.52 291.97 104.19 293.19 106.11 294.42 108.25 295.64 110.6 296.87 113.15 298.09 115.88 299.31 118.77 300.54 121.81 301.76 124.98 302.99 128.27 304.08 131.44 305.17 134.92 306.27 138.65 307.36 142.55 308.45 146.56 309.54 150.61 310.64 154.63 311.73 158.54 312.82 162.29 313.92 165.8 314.89 168.8 315.86 171.79 316.84 174.74 317.81 177.63 318.78 180.41 319.76 183.08 320.73 185.59 321.7 187.92 322.68 190.04 323.65 191.93 324.57 193.39 325.5 194.49 326.42 195.32 327.35 195.94 328.27 196.45 329.19 196.92 330.12 197.45 331.04 198.1 331.96 198.96 332.89 200.12 333.6 201.28 334.32 202.67 335.04 204.23 335.76 205.91 336.48 207.66 337.2 209.42 337.92 211.15 338.64 212.79 339.35 214.3 340.07 215.61 340.74 216.73 341.4 217.87 342.06 218.98 342.72 220.03 343.39 220.99 344.05 221.82 344.71 222.49 345.37 222.96 346.04 223.2 346.7 223.18 347.52 222.82 348.35 222.19 349.17 221.32 350 220.25 350.82 219.03 351.65 217.68 352.48 216.24 353.3 214.76 354.13 213.27 354.95 211.8 355.82 210.23 356.68 208.55 357.55 206.78 358.41 204.94 359.28 203.05 360.14 201.14 361.01 199.23 361.87 197.33 362.74 195.46 363.6 193.66 364.39 192.07 365.17 190.52 365.95 188.99 366.73 187.48 367.52 185.96 368.3 184.44 369.08 182.9 369.86 181.33 370.65 179.72 371.43 178.06 372.29 176.17 373.16 174.22 374.02 172.24 374.89 170.22 375.75 168.19 376.62 166.16 377.48 164.12 378.35 162.11 379.21 160.13 380.07 158.19 381.14 155.83 382.21 153.48 383.28 151.15 384.35 148.84 385.42 146.54 386.49 144.25 387.56 141.97 388.63 139.7 389.7 137.44 390.77 135.18 391.72 133.15 392.67 131.09 393.63 129.02 394.58 126.95 395.53 124.9 396.48 122.88 397.43 120.92 398.39 119.03 399.34 117.23 400.29 115.53 401.53 113.44 402.78 111.45 404.02 109.54 405.26 107.69 406.5 105.91 407.74 104.16 408.99 102.44 410.23 100.74 411.47 99.04 412.71 97.33 413.77 95.88 414.82 94.46 415.87 93.05 416.92 91.67 417.98 90.3 419.03 88.96 420.08 87.62 421.14 86.3 422.19 85 423.24 83.7 424.56 82.1 425.87 80.53 427.18 78.97 428.5 77.43 429.81 75.9 431.12 74.37 432.44 72.86 433.75 71.36 435.06 69.85 436.38 68.35 436.83 67.84 437.27 67.33 437.72 66.83 438.17 66.33 438.62 65.85 439.07 65.36 439.52 64.89 439.97 64.42 440.42 63.96 440.87 63.51 442.06 62.32 443.25 61.14 444.44 59.97 445.63 58.8 446.83 57.64 448.02 56.49 449.21 55.35 450.4 54.21 451.59 53.07 452.78 51.95 453.97 50.83 455.16 49.72 456.34 48.62 457.53 47.53 458.72 46.44 459.9 45.36 461.09 44.28 462.28 43.2 463.46 42.13 464.65 41.06 466.11 39.74 467.57 38.42 469.02 37.11 470.48 35.79 471.94 34.48 473.4 33.18 474.86 31.89 476.32 30.61 477.77 29.34 479.23 28.1 480.52 27.01 481.81 25.93 483.1 24.86 484.39 23.8 485.68 22.75 486.97 21.72 488.26 20.7 489.55 19.7 490.84 18.71 492.13 17.74 493.4 16.7 494.68 15.53 495.96 14.29 497.23 13.04 498.51 11.86 499.78 10.78 501.06 9.89 502.34 9.24 503.61 8.9 504.89 8.92 506.42 9.36 507.96 10.12 509.49 11.14 511.03 12.4 512.56 13.86 514.1 15.47 515.63 17.21 517.17 19.02 518.71 20.87 520.24 22.73 521.5 24.41 522.76 26.39 524.01 28.58 525.27 30.88 526.53 33.22 527.78 35.51 529.04 37.67 530.3 39.61 531.55 41.24 532.81 42.47 534.01 43.27 535.2 43.77 536.4 44.02 537.59 44.06 538.79 43.94 539.98 43.7 541.18 43.39 542.37 43.05 543.57 42.73 544.76 42.48 546.19 41.99 547.63 41.13 549.06 40.03 550.49 38.84 551.92 37.71 553.35 36.77 554.78 36.18 556.21 36.07 557.64 36.6 559.07 37.91 560.52 39.91 561.97 42.37 563.42 45.29 564.87 48.66 566.33 52.45 567.78 56.67 569.23 61.29 570.68 66.31 572.13 71.72 573.58 77.5 574.58 81.94 575.59 86.93 576.59 92.41 577.6 98.32 578.6 104.58 579.61 111.13 580.62 117.91 581.62 124.84 582.63 131.87 583.63 138.92 584.45 144.95 585.27 151.51 586.08 158.45 586.9 165.62 587.71 172.87 588.53 180.05 589.35 187.01 590.16 193.59 590.98 199.65 591.8 205.04 592.62 209.96 593.45 214.59 594.27 218.91 595.1 222.92 595.93 226.59 596.75 229.92 597.58 232.89 598.4 235.49 599.23 237.7 600.06 239.51 600.78 240.6 601.51 241.07 602.24 241.05 602.96 240.62 603.69 239.89 604.42 238.97 605.14 237.94 605.87 236.92 606.6 236 607.33 235.29 607.97 234.48 608.61 233.2 609.26 231.65 609.9 230 610.54 228.44 611.19 227.16 611.83 226.35 612.47 226.2 613.12 226.88 613.76 228.59 614.46 231.79 615.17 236.2 615.87 241.55 616.58 247.58 617.28 254.03 617.99 260.62 618.69 267.1 619.4 273.21 620.1 278.66 620.81 283.21 621.29 285.65 621.77 287.54 622.26 288.98 622.74 290.1 623.23 291 623.71 291.8 624.19 292.6 624.68 293.52 625.16 294.67 625.64 296.17 626.06 297.86 626.48 299.92 626.89 302.22 627.31 304.64 627.73 307.07 628.15 309.37 628.56 311.43 628.98 313.14 629.4 314.36 629.82 314.98 630.33 315.04 630.85 314.61 631.36 313.75 631.87 312.55 632.39 311.08 632.9 309.41 633.42 307.63 633.93 305.81 634.45 304.03 634.96 302.37 635.45 300.86 635.93 299.29 636.42 297.66 636.9 295.98 637.39 294.22 637.87 292.4 638.36 290.49 638.84 288.51 639.33 286.45 639.81 284.29 640.47 281.2 641.13 277.96 641.79 274.6 642.46 271.14 643.12 267.63 643.78 264.1 644.44 260.57 645.1 257.07 645.76 253.65 646.42 250.33 647.22 246.38 648.01 242.39 648.81 238.39 649.6 234.41 650.4 230.48 651.19 226.61 651.99 222.86 652.78 219.23 653.58 215.77 654.37 212.49 655.27 209.02 656.17 205.74 657.07 202.63 657.97 199.66 658.87 196.79 659.77 193.98 660.67 191.21 661.57 188.43 662.47 185.62 663.37 182.75 664.19 180.04 665.02 177.3 665.85 174.55 666.67 171.8 667.5 169.08 668.32 166.4 669.15 163.77 669.98 161.23 670.8 158.79 671.63 156.47 672.74 153.48 673.85 150.58 674.96 147.78 676.08 145.05 677.19 142.38 678.3 139.78 679.41 137.22 680.52 134.71 681.63 132.22 682.75 129.76 683.71 127.48 684.68 125.02 685.65 122.46 686.62 119.9 687.58 117.46 688.55 115.24 689.52 113.32 690.49 111.83 691.46 110.86 692.42 110.51" /></g></g><g class="titles"><text class="title plot_title" x="400.0" y="26">Lap Comparison ac_legends_gtc_corvette_63 @ rmi_nelson_ledges</text><text class="title" x="427.0" y="556.0">Track Position [m]</text><text class="title" transform="rotate(-90 0 278)" x="0" y="304.0">Velocity [km/h]</text></g><g class="plot overlay" transform="translate(74, 46)"><g class="series serie-0 color-0"><g class="dots"><circle class="dot reactive tooltip-trigger" cx="13.576923076923078" cy="105.78015351951314" r="1" /><desc class="value">0: 170.39</desc><desc class="x ">13.58</desc><desc class="y ">105.78</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="25.998279997577466" cy="88.13553101363851" r="1" /><desc class="value">0.02: 179</desc><desc class="x ">26</desc><desc class="y ">88.14</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="38.996077947605116" cy="71.66088864336405" r="1" /><desc class="value">0.04: 187.04</desc><desc class="x ">39</desc><desc class="y ">71.66</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="52.233549138387815" cy="116.63595945562446" r="1" /><desc class="value">0.06: 165.1</desc><desc class="x ">52.23</desc><desc class="y ">116.64</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="61.226546609344396" cy="166.3971143341376" r="1" /><desc class="value">0.07: 140.82</desc><desc class="x ">61.23</desc><desc class="y ">166.4</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="69.3731329680349" cy="182.26628450738116" r="1" /><desc class="value">0.08: 133.08</desc><desc class="x ">69.37</desc><desc class="y ">182.27</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="77.29895845707507" cy="198.62277241526533" r="1" /><desc class="value">0.1: 125.1</desc><desc class="x ">77.3</desc><desc class="y ">198.62</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="86.47734382304435" cy="182.27396032070607" r="1" /><desc class="value">0.11: 133.08</desc><desc class="x ">86.48</desc><desc class="y ">182.27</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="96.3400157480859" cy="158.68778440540314" r="1" /><desc class="value">0.12: 144.58</desc><desc class="x ">96.34</desc><desc class="y ">158.69</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="105.4357781906684" cy="139.4731819677628" r="1" /><desc class="value">0.14: 153.96</desc><desc class="x ">105.44</desc><desc class="y ">139.47</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="116.70041924170576" cy="117.62878858723502" r="1" /><desc class="value">0.15: 164.61</desc><desc class="x ">116.7</desc><desc class="y ">117.63</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="128.01435232742762" cy="154.2035719168186" r="1" /><desc class="value">0.17: 146.77</desc><desc class="x ">128.01</desc><desc class="y ">154.2</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="136.6306298312803" cy="186.10177114629016" r="1" /><desc class="value">0.18: 131.21</desc><desc class="x ">136.63</desc><desc class="y ">186.1</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="145.96510200410225" cy="181.94794391128647" r="1" /><desc class="value">0.2: 133.24</desc><desc class="x ">145.97</desc><desc class="y ">181.95</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="155.5584556699659" cy="168.14598316559506" r="1" /><desc class="value">0.21: 139.97</desc><desc class="x ">155.56</desc><desc class="y ">168.15</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="166.14851228291027" cy="143.36048390966988" r="1" /><desc class="value">0.23: 152.06</desc><desc class="x ">166.15</desc><desc class="y ">143.36</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="175.20301700290293" cy="152.20042852503576" r="1" /><desc class="value">0.24: 147.75</desc><desc class="x ">175.2</desc><desc class="y ">152.2</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="181.75612450835226" cy="190.04968488827768" r="1" /><desc class="value">0.25: 129.29</desc><desc class="x ">181.76</desc><desc class="y ">190.05</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="190.45254155678248" cy="229.59869749754694" r="1" /><desc class="value">0.26: 109.99</desc><desc class="x ">190.45</desc><desc class="y ">229.6</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="196.9330582811426" cy="233.08067422716033" r="1" /><desc class="value">0.27: 108.29</desc><desc class="x top">196.93</desc><desc class="y top">233.08</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="203.50485371791117" cy="221.52110625085547" r="1" /><desc class="value">0.28: 113.93</desc><desc class="x ">203.5</desc><desc class="y ">221.52</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="212.08027685856305" cy="208.50052381871885" r="1" /><desc class="value">0.29: 120.28</desc><desc class="x ">212.08</desc><desc class="y ">208.5</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="219.340785059863" cy="195.87636162589905" r="1" /><desc class="value">0.3: 126.44</desc><desc class="x ">219.34</desc><desc class="y ">195.88</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="228.6241601963456" cy="178.2139579538843" r="1" /><desc class="value">0.32: 135.06</desc><desc class="x ">228.62</desc><desc class="y ">178.21</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="237.1207493365241" cy="163.23551189064204" r="1" /><desc class="value">0.33: 142.37</desc><desc class="x ">237.12</desc><desc class="y ">163.24</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="247.31779038949088" cy="151.80115357457169" r="1" /><desc class="value">0.34: 147.94</desc><desc class="x ">247.32</desc><desc class="y ">151.8</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="258.1148367526297" cy="130.83773187391193" r="1" /><desc class="value">0.36: 158.17</desc><desc class="x ">258.11</desc><desc class="y ">130.84</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="270.1825442194509" cy="109.88696807110932" r="1" /><desc class="value">0.38: 168.39</desc><desc class="x ">270.18</desc><desc class="y ">109.89</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="280.3827887552146" cy="99.75968316151005" r="1" /><desc class="value">0.39: 173.33</desc><desc class="x ">280.38</desc><desc class="y ">99.76</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="290.74492392101547" cy="102.52057258416397" r="1" /><desc class="value">0.41: 171.98</desc><desc class="x ">290.74</desc><desc class="y ">102.52</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="302.98545760933604" cy="128.2728080007198" r="1" /><desc class="value">0.43: 159.42</desc><desc class="x ">302.99</desc><desc class="y ">128.27</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="313.9176673013001" cy="165.80131945174065" r="1" /><desc class="value">0.44: 141.11</desc><desc class="x ">313.92</desc><desc class="y ">165.8</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="323.6515613674688" cy="191.9304338456369" r="1" /><desc class="value">0.46: 128.37</desc><desc class="x ">323.65</desc><desc class="y ">191.93</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="332.88554268108254" cy="200.11945243515322" r="1" /><desc class="value">0.47: 124.37</desc><desc class="x ">332.89</desc><desc class="y ">200.12</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="340.07250164857567" cy="215.6077708163102" r="1" /><desc class="value">0.48: 116.82</desc><desc class="x ">340.07</desc><desc class="y ">215.61</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="346.6976081727503" cy="223.17887614708087" r="1" /><desc class="value">0.49: 113.12</desc><desc class="x ">346.7</desc><desc class="y ">223.18</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="354.95202425552105" cy="211.7995609048326" r="1" /><desc class="value">0.5: 118.68</desc><desc class="x left">354.95</desc><desc class="y left">211.8</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="363.6033225848268" cy="193.65739236187716" r="1" /><desc class="value">0.51: 127.53</desc><desc class="x left">363.6</desc><desc class="y left">193.66</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="371.42992798640176" cy="178.05851164756433" r="1" /><desc class="value">0.53: 135.13</desc><desc class="x left">371.43</desc><desc class="y left">178.06</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="380.074166894174" cy="158.18840352965043" r="1" /><desc class="value">0.54: 144.83</desc><desc class="x left">380.07</desc><desc class="y left">158.19</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="390.7702020771372" cy="135.1775394596815" r="1" /><desc class="value">0.55: 156.05</desc><desc class="x left">390.77</desc><desc class="y left">135.18</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="400.2910364033082" cy="115.53068069174225" r="1" /><desc class="value">0.57: 165.64</desc><desc class="x left">400.29</desc><desc class="y left">115.53</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="412.71276127876575" cy="97.33117566805066" r="1" /><desc class="value">0.59: 174.51</desc><desc class="x left">412.71</desc><desc class="y left">97.33</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="423.2416223294747" cy="83.70248888009343" r="1" /><desc class="value">0.6: 181.16</desc><desc class="x left">423.24</desc><desc class="y left">83.7</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="436.3766035663968" cy="68.34735013965837" r="1" /><desc class="value">0.62: 188.65</desc><desc class="x left">436.38</desc><desc class="y left">68.35</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="440.86816272992075" cy="63.507843806217465" r="1" /><desc class="value">0.63: 191.01</desc><desc class="x left">440.87</desc><desc class="y left">63.51</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="452.7827327183377" cy="51.94682664895322" r="1" /><desc class="value">0.64: 196.65</desc><desc class="x left">452.78</desc><desc class="y left">51.95</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="464.64866376023457" cy="41.057785759928606" r="1" /><desc class="value">0.66: 201.97</desc><desc class="x left">464.65</desc><desc class="y left">41.06</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="479.2334583631646" cy="28.097878603704373" r="1" /><desc class="value">0.68: 208.29</desc><desc class="x left">479.23</desc><desc class="y left">28.1</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="492.1292051233065" cy="17.737877789787262" r="1" /><desc class="value">0.7: 213.34</desc><desc class="x left">492.13</desc><desc class="y left">17.74</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="504.8867481858112" cy="8.92307692307702" r="1" /><desc class="value">0.72: 217.64</desc><desc class="x left">504.89</desc><desc class="y left">8.92</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="520.2411904365828" cy="22.728024493912358" r="1" /><desc class="value">0.74: 210.91</desc><desc class="x left">520.24</desc><desc class="y left">22.73</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="532.8119319495388" cy="42.472541673504" r="1" /><desc class="value">0.76: 201.28</desc><desc class="x left">532.81</desc><desc class="y left">42.47</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="544.7631033252782" cy="42.477604271904454" r="1" /><desc class="value">0.78: 201.27</desc><desc class="x left">544.76</desc><desc class="y left">42.48</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="559.0743873867278" cy="37.905418570019094" r="1" /><desc class="value">0.8: 203.5</desc><desc class="x left">559.07</desc><desc class="y left">37.91</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="573.5756145224979" cy="77.50190851455397" r="1" /><desc class="value">0.82: 184.19</desc><desc class="x left">573.58</desc><desc class="y left">77.5</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="583.632575434776" cy="138.91646426637226" r="1" /><desc class="value">0.84: 154.23</desc><desc class="x left">583.63</desc><desc class="y left">138.92</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="591.7951615051583" cy="205.03928850852077" r="1" /><desc class="value">0.85: 121.97</desc><desc class="x left">591.8</desc><desc class="y left">205.04</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="600.0553516965504" cy="239.51497895129907" r="1" /><desc class="value">0.86: 105.16</desc><desc class="x left top">600.06</desc><desc class="y left top">239.51</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="607.326082339797" cy="235.28595460198767" r="1" /><desc class="value">0.87: 107.22</desc><desc class="x left top">607.33</desc><desc class="y left top">235.29</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="613.7595514273272" cy="228.59401103726861" r="1" /><desc class="value">0.88: 110.48</desc><desc class="x left">613.76</desc><desc class="y left">228.59</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="620.8080620262057" cy="283.2146489997883" r="1" /><desc class="value">0.89: 83.84</desc><desc class="x left top">620.81</desc><desc class="y left top">283.21</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="625.642579723078" cy="296.1708871179975" r="1" /><desc class="value">0.9: 77.52</desc><desc class="x left top">625.64</desc><desc class="y left top">296.17</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="629.8172128394677" cy="314.9783580334433" r="1" /><desc class="value">0.9: 68.34</desc><desc class="x left top">629.82</desc><desc class="y left top">314.98</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="634.9604136372129" cy="302.370209076484" r="1" /><desc class="value">0.91: 74.49</desc><desc class="x left top">634.96</desc><desc class="y left top">302.37</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="639.8102330696555" cy="284.2909656467027" r="1" /><desc class="value">0.92: 83.31</desc><desc class="x left top">639.81</desc><desc class="y left top">284.29</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="646.4237306830116" cy="250.3291207471505" r="1" /><desc class="value">0.93: 99.88</desc><desc class="x left top">646.42</desc><desc class="y left top">250.33</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="654.3698512186799" cy="212.49461384831545" r="1" /><desc class="value">0.94: 118.34</desc><desc class="x left">654.37</desc><desc class="y left">212.49</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="663.3682295544647" cy="182.74674239103547" r="1" /><desc class="value">0.95: 132.85</desc><desc class="x left">663.37</desc><desc class="y left">182.75</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="671.6288275308191" cy="156.4663263651032" r="1" /><desc class="value">0.96: 145.67</desc><desc class="x left">671.63</desc><desc class="y left">156.47</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="682.7466963422128" cy="129.75579732443117" r="1" /><desc class="value">0.98: 158.7</desc><desc class="x left">682.75</desc><desc class="y left">129.76</desc></g><g class="dots"><circle class="dot reactive tooltip-trigger" cx="692.4230769230769" cy="110.50938563185593" r="1" /><desc class="value">0.99: 168.09</desc><desc class="x left">692.42</desc><desc class="y left">110.51</desc></g></g></g><g class="plot text-overlay" transform="translate(74, 46)"><g class="series serie-0 color-0" /></g><g class="plot tooltip-overlay" transform="translate(74, 46)"><g class="tooltip" style="opacity: 0" transform="translate(0 0)"><rect class="tooltip-box" height="0" rx="10" ry="10" width="0" /><g class="text" /></g></g><g class="legends" transform="translate(84, 576)"><g class="legend reactive activate-serie" id="activate-serie-0"><rect class="color-0 reactive" height="12" width="12" x="0.0" y="1.0" /><text x="17.0" y="11.2">C:01:18.15 by Dana Whitfield</text></g></g></g></svg>
+            </div>
+            <div>
+                
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="col-md-12 panel panel-info">
+                <div class="panel-heading">Select comparison laps</div>
+                    <div class="panel-body">
+                        <form>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox"  id="cbPSB">
+                                    Personal Session Best (PSB)
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox"  id="cbSB">
+                                    Session Best (SB)
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox"  id="cbPB">
+                                    Personal Best (PB)
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox"  id="cbB">
+                                    Server Best (B)
+                                </label>
+                            </div>
+                            <div class="checkbox disabled">
+                                <label>
+                                    <input disabled type="checkbox"  id="cbM">
+                                    Manual Selection (M)
+                                </label>
+                            </div>
+                            <div class="btn-group btn-group-justified" role="group">
+                                <a class="btn btn-default" onclick="updateComparison()" role="button">Submit</button>
+                                <a data-toggle="tooltip" title="Save this lap for manual comparison. When visiting another lap's detail page, you get the comparison to this lap. Cookies have to be enabled for this."
+                                   class="btn btn-default" href="lapdetails_store_lapid?lapid=468323&cmpbits=0"
+                                   role="button">
+                                    Manual compare
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+$('[data-toggle="tooltip"]').tooltip({
+    'placement': 'top',
+    'container': 'body'
+});
+</script>
+
+
+
+
+
+<nav class="navbar navbar-inverse navbar-fixed-bottom">
+    <div class="container-fluid">
+       <div class="col-sm-3">
+       </div>
+
+        <div style="text-align:center" class="col-sm-6">
+        </div>
+        <div class="col-sm-3">
+                <p class="navbar-text navbar-right">
+                   v3.5.1 provided by <b>Neys</b>
+                </p>
+        </ul>
+    </div>
+</nav>
+<!--</div>-->
+</body>
+
+<!-- Initialize the multiselect plugin: -->
+<script type="text/javascript">
+$(document).ready(function() {
+    $('.multiselect').multiselect({
+        buttonWidth: '100%',
+        includeSelectAllOption: true,
+        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
+        maxHeight: 350
+    });
+});
+</script>
+
+<!-- Support clickable table rows -->
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+      $(".clickableRow td:not(.noclick)").click(function() {
+            var tr = $(this).context.parentElement;
+            window.document.location = $(tr).attr("href");
+      });
+});
+</script>
+
+<!-- Initialize the datepicker plugin -->
+<script type="text/javascript">
+$('.datepicker').datepicker()
+</script>
+</html>

@@ -1,0 +1,9 @@
+# test run artefacts
+tests/out/
+tests/__pycache__/
+
+# packages built by scripts\pack.cmd
+dist/
+
+# snapshot made by scripts\install.cmd -Backup
+backups/

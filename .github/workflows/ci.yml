@@ -1,0 +1,110 @@
+# Offline test suite.
+#
+# What can be checked without Assetto Corsa is checked here: the Lua under tests\
+# against its fixtures, and the packaging. Nothing here talks to a stracker server
+# or to the game.
+#
+# Actions are pinned to the commit behind their release tag, the way the GitHub
+# security guidance asks for. Dependabot keeps the pins current (.github\dependabot.yml).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# No job here needs more than reading the repository. The release workflow is the
+# only one that writes, and it says so where it does.
+permissions:
+  contents: read
+
+# A new push to a branch supersedes the run that is still going on it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests (python ${{ matrix.python }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Run the offline suite
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install lupa
+          python tests\run_tests.py
+
+  package:
+    name: package
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Build the package
+        run: cmd /c "scripts\pack.cmd"
+
+      # The archive is what Content Manager unpacks, and its entry names decide
+      # where the files land in the game. A backslash inside an entry name is the
+      # failure this catches, along with a file that quietly went missing.
+      - name: Check the archive layout
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($zip.FullName)
+          try { $names = @($archive.Entries | ForEach-Object { $_.FullName }) } finally { $archive.Dispose() }
+
+          $expected = @(
+            'apps/lua/StrackerDelta/manifest.ini',
+            'apps/lua/StrackerDelta/StrackerDelta.lua',
+            'apps/lua/StrackerDelta/README.md',
+            'apps/lua/StrackerDelta/LICENSE',
+            'apps/lua/StrackerDelta/modules/web.lua',
+            'apps/lua/StrackerDelta/modules/stracker.lua',
+            'apps/lua/StrackerDelta/modules/html.lua',
+            'apps/lua/StrackerDelta/modules/lap.lua',
+            'apps/lua/StrackerDelta/modules/addresses.lua',
+          )
+
+          $bad = $names | Where-Object { $_ -match '\\' }
+          if ($bad) { throw "entry names with a backslash: $($bad -join ', ')" }
+
+          $missing = $expected | Where-Object { $names -notcontains $_ }
+          if ($missing) { throw "missing from the package: $($missing -join ', ')" }
+
+          $extra = $names | Where-Object { $expected -notcontains $_ }
+          if ($extra) { throw "not on the list: $($extra -join ', ')" }
+
+          Write-Host "package layout ok: $($names.Count) entries"
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
+          $hash = (Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($zip.Name)" | Set-Content -LiteralPath dist\SHA256SUMS -Encoding ascii
+
+      - name: Upload the package
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: package
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS
+          if-no-files-found: error

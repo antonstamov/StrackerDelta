@@ -1,0 +1,1050 @@
+
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="googlebot" content="noindex, nofollow">
+
+    <!-- Include Twitter Bootstrap and jQuery: -->
+
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap-multiselect.css" type="text/css"/>
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap-datepicker.css" type="text/css"/>
+    <link rel="stylesheet" href="/bootstrap/css/sticky-footer.css" type="text/css"/>
+    <link rel="stylesheet" href="/bootstrap/css/fileinput.min.css" media="all" type="text/css" />
+
+    <script src="/jquery/jquery.min.js"></script>
+    <script src="/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/bootstrap/js/bootstrap-multiselect.js"></script>
+    <script type="text/javascript" src="/bootstrap/js/bootstrap-datepicker.js"></script>
+    <script src="/bootstrap/js/fileinput.min.js" type="text/javascript"></script>
+
+    <title>Laps</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/img/brand_icon_small_wob.png">
+
+    <style>
+
+        .aids {
+            width:16px;
+            height:16px;
+            background:none left top no-repeat;
+            display:inline-block;
+            background-size:cover;
+            margin-right:-3px;
+            margin-left:-3px;
+            margin-top:-3px;
+            margin-bottom:-3px;
+        }
+
+        .aids.autoclutch.off { background-image:url(/img/icn_stability_off.png) }
+        .aids.autoclutch.on  { background-image:url(/img/icn_stability_on.png) }
+        .aids.autoclutch.unknown { background-image:url(/img/icn_stability_unknown.png) }
+
+        .aids.abs.off { background-image:url(/img/icn_abs_off.png) }
+        .aids.abs.factory { background-image:url(/img/icn_abs_factory.png) }
+        .aids.abs.on { background-image:url(/img/icn_abs_on.png) }
+        .aids.abs.unknown { background-image:url(/img/icn_abs_unknown.png) }
+
+        .aids.autobrake.off { background-image:url(/img/icn_automaticbraking_off.png) }
+        .aids.autobrake.on { background-image:url(/img/icn_automaticbraking_on.png) }
+        .aids.autobrake.unknown { background-image:url(/img/icn_automaticbraking_unknown.png) }
+
+        .aids.autogearbox.off { background-image:url(/img/icn_gearbox_off.png) }
+        .aids.autogearbox.on { background-image:url(/img/icn_gearbox_on.png) }
+        .aids.autogearbox.unknown { background-image:url(/img/icn_gearbox_unknown.png) }
+
+        .aids.blip.off { background-image:url(/img/icn_heeltoe_off.png) }
+        .aids.blip.on { background-image:url(/img/icn_heeltoe_on.png) }
+        .aids.blip.unknown { background-image:url(/img/icn_heeltoe_unknown.png) }
+
+        .aids.idealline.off { background-image:url(/img/icn_idealline_off.png) }
+        .aids.idealline.on { background-image:url(/img/icn_idealline_on.png) }
+        .aids.idealline.unknown { background-image:url(/img/icn_idealline_unknown.png) }
+
+        .aids.tc.off { background-image:url(/img/icn_tractioncontrol_off.png) }
+        .aids.tc.factory { background-image:url(/img/icn_tractioncontrol_factory.png) }
+        .aids.tc.on { background-image:url(/img/icn_tractioncontrol_on.png) }
+        .aids.tc.unknown { background-image:url(/img/icn_tractioncontrol_unknown.png) }
+
+        .aids.damage.off { background-image:url(/img/icn_stability_off.png) }
+        .aids.damage.on { background-image:url(/img/icn_stability_on.png) }
+        .aids.damage.unknown { background-image:url(/img/icn_stability_unknown.png) }
+
+        .bestLap { color:#ff00ff }
+        .bestSector { color:#00c000 }
+
+        .multiselect {
+            text-align: left;
+        }
+        .multiselect b.caret {
+            position: absolute;
+            top: 14px;
+            right: 8px;
+        }
+        .multiselect-container>li>a>label>input[type=checkbox]{margin-bottom:0px}
+
+        .table-condensed>thead>tr>th,
+        .table-condensed>tbody>tr>th,
+        .table-condensed>tfoot>tr>th,
+        .table-condensed>thead>tr>td,
+        .table-condensed>tbody>tr>td,
+        .table-condensed>tfoot>tr>td {
+            padding: 2px;
+        }
+        .clickableRow td {
+            cursor: pointer;
+            cursor: hand;
+        }
+        .clickableRow td.noclick {
+            cursor: auto;
+        }
+        .table tbody>tr>td.vert-align {
+            vertical-align: middle;
+        }
+        .table thead>tr>th.vert-align {
+            vertical-align: middle;
+        }
+        .navbar-fixed-bottom {
+            z-index: 900;
+        }
+    </style>
+    <link rel="stylesheet" href="/bootstrap/css/custom.css" media="all" type="text/css" />
+</head>
+<body>
+
+
+<nav class="navbar navbar-inverse" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/"><img class="img-responsive" alt="stracker" src="/img/brand_icon_large_wob.png" /></a>
+    </div>
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li class="active"><a href="/lapstat">Lap Times</a></li>
+        <li ><a href="/sessionstat">Sessions</a></li>
+        <li ><a href="/players">Drivers</a></li>
+        <li ><a href="/championship">Championships</a></li>
+        <li ><a href="/statistics">Statistics</a></li>
+        <li ><a href="/livemap">Live Map</a></li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+
+
+
+
+  
+<script>
+function toggleCollapse(e, self) {
+    var $e = $(e);
+    var $collapse = $e.closest('.collapse-group').find('.collapse');
+    var $self = $(self);
+    if( $($self[0]).text() == "+" )
+    {
+        $($self[0]).text("-");
+        $collapse.collapse('show');
+    } else
+    {
+        $($self[0]).text("+");
+        $collapse.collapse('hide');
+    }
+}
+
+function ms_to_string(ms)
+{
+    res = '';
+    for(var i=0; i < ms.length; i++) {
+        if (ms.options[i].selected) {
+            if (res != '') {
+                res = res + ",";
+            }
+            res = res + ms.options[i].value
+        }
+    }
+    return res;
+}
+
+function ms_count(ms)
+{
+    res = 0;
+    for(var i=0; i < ms.length; i++) {
+        if (ms.options[i].selected) {
+            res = res + 1;
+        }
+    }
+    return res;
+}
+
+function applySelections() {
+    var track = document.getElementById("trackname").value;
+    var ranking = document.getElementById("ranking").value;
+    var ms_cars = document.getElementById("cars");
+    var ms_valid = document.getElementById("valid");
+    var ms_tyres = document.getElementById("tyres");
+    var ms_servers = document.getElementById("servers");
+    var ms_groups = document.getElementById("groups");
+    var server = "";
+    if( (ms_count(ms_servers) < 8) && (ms_servers.length > 0) )
+    {
+        server = "&currservers=" + ms_to_string(ms_servers);
+    }
+    var valid = ms_to_string(ms_valid);
+    var cars = ms_to_string(ms_cars);
+    var date_from = document.getElementById("dateStart").value;
+    var date_to = document.getElementById("dateStop").value;
+    var tyres = ms_to_string(ms_tyres);
+    var groups = ms_to_string(ms_groups);
+    if (ms_count(ms_tyres) < 12 ) {
+        tyres = '&tyres='+tyres;
+    } else
+    {
+        tyres = '';
+    }
+    if (ms_count(ms_groups) > 0) {
+        groups = '&groups='+groups;
+    } else
+    {
+        groups = '';
+    }
+    if (ranking != '0')
+    {
+        ranking = '&ranking='+ranking;
+    } else
+    {
+        ranking = '';
+    }
+    window.location='lapstat?track='+track+'&cars='+cars+'&valid='+valid+'&date_from='+date_from+'&date_to='+date_to+tyres+server+groups+ranking;
+}
+</script>
+
+<div class="container">
+  <div class="page-header">
+    <div class="row">
+        <div class="col-md-6">
+            <img src="/img/banner.png" title="Logo Track" class="ACimg">
+        </div>
+        <div class="col-md-6">
+            <form class="form-horizontal collapse-group" role="form">
+                <!-- *********** standard filters ************* -->
+                <div class="form-group">
+                    <label for="trackname" class="col-md-2 control-label">Track</label>
+                    <div class="col-md-10">
+                        <select id="trackname" name="trackname" class="multiselect form-control">
+                            <option  value="1953_gnoo_blas">1953_gnoo_blas</option>
+                            <option  value="2ace_bannochbrae">2ace_bannochbrae</option>
+                            <option  value="2ace_coppa_carotti-cc">2ace_coppa_carotti-cc</option>
+                            <option  value="2ace_ks_nordschleife-reverse-rev">2ace_ks_nordschleife-reverse-rev</option>
+                            <option  value="ablz_targaflorio73-full_practice_fix">ablz_targaflorio73-full_practice_fix</option>
+                            <option  value="acu_chicago_street-normal">acu_chicago_street-normal</option>
+                            <option  value="acu_sepang-46_pits">acu_sepang-46_pits</option>
+                            <option  value="algarve_portimao_2023-64pits">algarve_portimao_2023-64pits</option>
+                            <option  value="asrl_charlotte-oval">asrl_charlotte-oval</option>
+                            <option  value="asrl_darlington">asrl_darlington</option>
+                            <option  value="asrl_daytona-rac_80s_sportscar">asrl_daytona-rac_80s_sportscar</option>
+                            <option  value="asrl_indy_v2-indy500">asrl_indy_v2-indy500</option>
+                            <option  value="asrl_longbeach">asrl_longbeach</option>
+                            <option  value="asrl_mid_ohio-chicane">asrl_mid_ohio-chicane</option>
+                            <option  value="asrl_mid_ohio-mid_ohio_80s">asrl_mid_ohio-mid_ohio_80s</option>
+                            <option  value="asrl_sebring-full">asrl_sebring-full</option>
+                            <option  value="atlantic_motorsport_park">atlantic_motorsport_park</option>
+                            <option  value="autodrome_de_linas-montlhery-anneau">autodrome_de_linas-montlhery-anneau</option>
+                            <option  value="autodrome_de_linas-montlhery-bruyeres">autodrome_de_linas-montlhery-bruyeres</option>
+                            <option  value="avus">avus</option>
+                            <option  value="bremgarten">bremgarten</option>
+                            <option  value="bridgehampton">bridgehampton</option>
+                            <option  value="bridgehampton-bridgehampton_mod">bridgehampton-bridgehampton_mod</option>
+                            <option  value="brooklands-layout_long">brooklands-layout_long</option>
+                            <option  value="brooklands-layout_short">brooklands-layout_short</option>
+                            <option  value="bruschied-8-1-long">bruschied-8-1-long</option>
+                            <option  value="bruschied-8-4-ab">bruschied-8-4-ab</option>
+                            <option  value="bsas_h22-12">bsas_h22-12</option>
+                            <option  value="bsas_h22-8_a">bsas_h22-8_a</option>
+                            <option  value="bugatti67">bugatti67</option>
+                            <option  value="circuit_charade2023-charade2023_8km">circuit_charade2023-charade2023_8km</option>
+                            <option  value="col_saint_pierre_2024">col_saint_pierre_2024</option>
+                            <option  value="deutschlandring">deutschlandring</option>
+                            <option  value="deutschlandring_thr">deutschlandring_thr</option>
+                            <option  value="dijon-prenois2016-68_slots_gp">dijon-prenois2016-68_slots_gp</option>
+                            <option  value="florida_f3ct-24hours">florida_f3ct-24hours</option>
+                            <option  value="florida_nwc71">florida_nwc71</option>
+                            <option  value="fonteny-fonteny">fonteny-fonteny</option>
+                            <option  value="fonteny-trackday">fonteny-trackday</option>
+                            <option  value="fuji68-gp">fuji68-gp</option>
+                            <option  value="fuji_speedway_1982-84-85">fuji_speedway_1982-84-85</option>
+                            <option  value="g333_goodwood_hillclimb-layout_c">g333_goodwood_hillclimb-layout_c</option>
+                            <option  value="gb_brno65">gb_brno65</option>
+                            <option  value="ghoults_horsma-club">ghoults_horsma-club</option>
+                            <option  value="goodwood_circuit-dry">goodwood_circuit-dry</option>
+                            <option  value="gp3r_trois_rivieres">gp3r_trois_rivieres</option>
+                            <option  value="hermanos_rodriguez1988">hermanos_rodriguez1988</option>
+                            <option  value="highforce-high_force">highforce-high_force</option>
+                            <option  value="highforce-high_force_aca">highforce-high_force_aca</option>
+                            <option  value="hockegp_f3ct-hockegp">hockegp_f3ct-hockegp</option>
+                            <option  value="hss_1915_ascot_park-1915">hss_1915_ascot_park-1915</option>
+                            <option  value="imola_pre_73">imola_pre_73</option>
+                            <option  value="imola_pre_73-64slots">imola_pre_73-64slots</option>
+                            <option  value="indy_gat">indy_gat</option>
+                            <option  value="isle_of_man">isle_of_man</option>
+                            <option  value="jarama_2009-1995_bpr">jarama_2009-1995_bpr</option>
+                            <option  value="jarama_2009-2009">jarama_2009-2009</option>
+                            <option  value="jr_daytona-oval">jr_daytona-oval</option>
+                            <option  value="jr_mosport_2023-60s-reskin">jr_mosport_2023-60s-reskin</option>
+                            <option  value="jr_road_atlanta_2022-full">jr_road_atlanta_2022-full</option>
+                            <option  value="jr_road_atlanta_2022-full_left">jr_road_atlanta_2022-full_left</option>
+                            <option  value="jr_road_atlanta_2022-full_no_glue">jr_road_atlanta_2022-full_no_glue</option>
+                            <option  value="js_thruxton">js_thruxton</option>
+                            <option  value="ks_brands_hatch-gp">ks_brands_hatch-gp</option>
+                            <option  value="ks_brands_hatch-gp_osrw">ks_brands_hatch-gp_osrw</option>
+                            <option  value="ks_brands_hatch-gp_rs_50">ks_brands_hatch-gp_rs_50</option>
+                            <option  value="ks_brands_hatch-indy">ks_brands_hatch-indy</option>
+                            <option  value="ks_brands_hatch-indy_osrw">ks_brands_hatch-indy_osrw</option>
+                            <option  value="ks_highlands-layout_long">ks_highlands-layout_long</option>
+                            <option  value="ks_highlands-layout_short">ks_highlands-layout_short</option>
+                            <option  value="ks_laguna_seca">ks_laguna_seca</option>
+                            <option  value="ks_laguna_seca-laguna_seca_osrw">ks_laguna_seca-laguna_seca_osrw</option>
+                            <option  value="ks_monza66-junior_osrw">ks_monza66-junior_osrw</option>
+                            <option  value="ks_nurburgring-layout_gp_a_osrw">ks_nurburgring-layout_gp_a_osrw</option>
+                            <option  value="ks_silverstone1967">ks_silverstone1967</option>
+                            <option  value="ks_vallelunga-classic_circuit_osrw">ks_vallelunga-classic_circuit_osrw</option>
+                            <option  value="ks_zandvoort-zandvoort_osrw">ks_zandvoort-zandvoort_osrw</option>
+                            <option  value="la_canyons-normal">la_canyons-normal</option>
+                            <option  value="la_pommeraye">la_pommeraye</option>
+                            <option  value="lilski_road_america">lilski_road_america</option>
+                            <option  value="lilski_road_america-86slots">lilski_road_america-86slots</option>
+                            <option  value="lilski_road_america-ra80s">lilski_road_america-ra80s</option>
+                            <option  value="lilski_watkins_glen-boot_classic">lilski_watkins_glen-boot_classic</option>
+                            <option  value="lilski_watkins_glen-short_classic">lilski_watkins_glen-short_classic</option>
+                            <option  value="longford_67">longford_67</option>
+                            <option  value="marshland-club-11-club">marshland-club-11-club</option>
+                            <option  value="marshland-farms-10-farms">marshland-farms-10-farms</option>
+                            <option  value="masduclos-shortloop">masduclos-shortloop</option>
+                            <option  value="monaco_1966">monaco_1966</option>
+                            <option  value="mont_ventoux">mont_ventoux</option>
+                            <option  value="monza_faux_pre-war">monza_faux_pre-war</option>
+                            <option  value="mt-tremblant_69-gp_league_grid">mt-tremblant_69-gp_league_grid</option>
+                            <option  value="mt-tremblant_69-north">mt-tremblant_69-north</option>
+                            <option  value="nemuno_ziedas-fastlap">nemuno_ziedas-fastlap</option>
+                            <option  value="njmp_lightning">njmp_lightning</option>
+                            <option  value="nurburgring1967-gesamtstrecke-ab">nurburgring1967-gesamtstrecke-ab</option>
+                            <option  value="nurburgring1967-sudschleife">nurburgring1967-sudschleife</option>
+                            <option  value="nurburgring_1984-1984">nurburgring_1984-1984</option>
+                            <option  value="okayama-circuit_piper">okayama-circuit_piper</option>
+                            <option  value="ona_nwc71">ona_nwc71</option>
+                            <option  value="ottawapark-northclub">ottawapark-northclub</option>
+                            <option  value="oulton_park-fosters">oulton_park-fosters</option>
+                            <option  value="pacific_coast_hwy-northbound">pacific_coast_hwy-northbound</option>
+                            <option  value="pacific_coast_hwy-southbound">pacific_coast_hwy-southbound</option>
+                            <option  value="paris-paris_eiffel">paris-paris_eiffel</option>
+                            <option  value="paris-paris_seine">paris-paris_seine</option>
+                            <option  value="paul_ricard-gt_24h">paul_ricard-gt_24h</option>
+                            <option  value="rennbahn">rennbahn</option>
+                            <option  value="riverside-long">riverside-long</option>
+                            <option  value="riverside-nascar">riverside-nascar</option>
+                            <option  value="riverside-nascar_extrapits">riverside-nascar_extrapits</option>
+                            <option  value="riverside-spike">riverside-spike</option>
+                            <option  value="rj_lemans_1967-lm54_thr_maison">rj_lemans_1967-lm54_thr_maison</option>
+                            <option  value="rj_lemans_1967_thr_endu">rj_lemans_1967_thr_endu</option>
+                            <option  value="rj_longford_1960s-1960s">rj_longford_1960s-1960s</option>
+                            <option  value="rj_pacific">rj_pacific</option>
+                            <option  value="rj_pacific-2024">rj_pacific-2024</option>
+                            <option  value="rj_portland_int-chicane">rj_portland_int-chicane</option>
+                            <option  value="rj_portland_int-nochicane">rj_portland_int-nochicane</option>
+                            <option  value="rj_spa_34_66-66">rj_spa_34_66-66</option>
+                            <option  value="rmi_circuitoditalia">rmi_circuitoditalia</option>
+                            <option  value="rmi_hernadwalley-regular">rmi_hernadwalley-regular</option>
+                            <option  value="rmi_nelson_ledges">rmi_nelson_ledges</option>
+                            <option  value="rmi_royhesketh">rmi_royhesketh</option>
+                            <option  value="rs_tor_poznanl-laser">rs_tor_poznanl-laser</option>
+                            <option  value="rt_bannochbrae-normal">rt_bannochbrae-normal</option>
+                            <option  value="rt_california_highway-normal_32_pit">rt_california_highway-normal_32_pit</option>
+                            <option  value="rt_lime_rock_park-no_chicane">rt_lime_rock_park-no_chicane</option>
+                            <option  value="rt_macau">rt_macau</option>
+                            <option  value="rt_mont_tremblant-no_chicane">rt_mont_tremblant-no_chicane</option>
+                            <option  value="rt_sonoma-long">rt_sonoma-long</option>
+                            <option  value="rx-marshland-club-snow">rx-marshland-club-snow</option>
+                            <option  value="rx_blackwood-cross">rx_blackwood-cross</option>
+                            <option  value="rx_eiger-ktrail">rx_eiger-ktrail</option>
+                            <option  value="rx_holjes_14pits">rx_holjes_14pits</option>
+                            <option  value="rx_kouvola_14pits">rx_kouvola_14pits</option>
+                            <option  value="sandev_f3ct-sandev73_thr">sandev_f3ct-sandev73_thr</option>
+                            <option  value="sitges_gat-sitges_anti">sitges_gat-sitges_anti</option>
+                            <option  value="spa-spa_osrw113">spa-spa_osrw113</option>
+                            <option  value="spa_faux_pre_war">spa_faux_pre_war</option>
+                            <option  value="spa_thr-66">spa_thr-66</option>
+                            <option  value="spielberg_hist-1974">spielberg_hist-1974</option>
+                            <option  value="ss_stlaurent_free">ss_stlaurent_free</option>
+                            <option  value="ss_stlaurent_free+7">ss_stlaurent_free+7</option>
+                            <option  value="ss_stlaurent_free-16pit">ss_stlaurent_free-16pit</option>
+                            <option  value="suzuka_f3ct">suzuka_f3ct</option>
+                            <option  value="sveg-standard">sveg-standard</option>
+                            <option  value="sx_lemans-acf_chicane_24h">sx_lemans-acf_chicane_24h</option>
+                            <option  value="sx_lemans-chicane">sx_lemans-chicane</option>
+                            <option  value="td_garnett1963">td_garnett1963</option>
+                            <option  value="thomson">thomson</option>
+                            <option selected value="tmm_lausitzring-layout_oval">tmm_lausitzring-layout_oval</option>
+                            <option  value="topanga_canyon_v1-race">topanga_canyon_v1-race</option>
+                            <option  value="vac_salzburgring">vac_salzburgring</option>
+                            <option  value="vir-full course">vir-full course</option>
+                            <option  value="watkins_f3ct-watkins_gp">watkins_f3ct-watkins_gp</option>
+                            <option  value="westwood_f3ct">westwood_f3ct</option>
+                            <option  value="willow_springs-big_willow_real">willow_springs-big_willow_real</option>
+                            <option  value="zolder67">zolder67</option>
+                            <option  value="zw_croft-full">zw_croft-full</option>
+                        </select>
+                    </div>
+                    <label for="cars" class="col-md-2 control-label">Cars</label>
+                    <div class="col-md-10">
+                        <select id="cars" name="cars" class="form-control multiselect" multiple="multiple">
+                            <option  value="2ace_ac_legends_ferrari_312pb">2ace_ac_legends_ferrari_312pb</option>
+                            <option  value="2ace_jaguar-e-type-chevy">2ace_jaguar-e-type-chevy</option>
+                            <option  value="2ace_ruf_yellowbird">2ace_ruf_yellowbird</option>
+                            <option  value="2ace_tc_legends_austin_healey_3000">2ace_tc_legends_austin_healey_3000</option>
+                            <option  value="2ace_tc_legends_cortina">2ace_tc_legends_cortina</option>
+                            <option  value="2ace_tc_legends_hillman_imp">2ace_tc_legends_hillman_imp</option>
+                            <option  value="2ace_tc_legends_jaguar_mk2">2ace_tc_legends_jaguar_mk2</option>
+                            <option  value="2ace_tc_legends_mg_a_race">2ace_tc_legends_mg_a_race</option>
+                            <option  value="2ace_tc_legends_mgbgt">2ace_tc_legends_mgbgt</option>
+                            <option  value="2ace_tc_legends_mini_cooper">2ace_tc_legends_mini_cooper</option>
+                            <option  value="2ace_tcl_amg_300se-lw">2ace_tcl_amg_300se-lw</option>
+                            <option  value="a3dr_honda_s800_rsc">a3dr_honda_s800_rsc</option>
+                            <option  value="a3dr_toyota_sera">a3dr_toyota_sera</option>
+                            <option  value="ac_legends_gtc_abarth_simca_2000">ac_legends_gtc_abarth_simca_2000</option>
+                            <option  value="ac_legends_gtc_alfa_33_stradale">ac_legends_gtc_alfa_33_stradale</option>
+                            <option  value="ac_legends_gtc_alfa_tz">ac_legends_gtc_alfa_tz</option>
+                            <option  value="ac_legends_gtc_aston_martin_db4z">ac_legends_gtc_aston_martin_db4z</option>
+                            <option  value="ac_legends_gtc_bizzarrini_5300">ac_legends_gtc_bizzarrini_5300</option>
+                            <option  value="ac_legends_gtc_corvette67">ac_legends_gtc_corvette67</option>
+                            <option  value="ac_legends_gtc_corvette_63">ac_legends_gtc_corvette_63</option>
+                            <option  value="ac_legends_gtc_elan_26r">ac_legends_gtc_elan_26r</option>
+                            <option  value="ac_legends_gtc_ferrari_250_gto">ac_legends_gtc_ferrari_250_gto</option>
+                            <option  value="ac_legends_gtc_ferrari_250gt_swb">ac_legends_gtc_ferrari_250gt_swb</option>
+                            <option  value="ac_legends_gtc_ferrari_250gto_s2">ac_legends_gtc_ferrari_250gto_s2</option>
+                            <option  value="ac_legends_gtc_ferrari_275gtb_c">ac_legends_gtc_ferrari_275gtb_c</option>
+                            <option  value="ac_legends_gtc_ginetta_g10">ac_legends_gtc_ginetta_g10</option>
+                            <option  value="ac_legends_gtc_healey_3000_lw">ac_legends_gtc_healey_3000_lw</option>
+                            <option  value="ac_legends_gtc_jaguar_e_type_lw">ac_legends_gtc_jaguar_e_type_lw</option>
+                            <option  value="ac_legends_gtc_jaguar_etype_lm">ac_legends_gtc_jaguar_etype_lm</option>
+                            <option  value="ac_legends_gtc_mercedes_300sl">ac_legends_gtc_mercedes_300sl</option>
+                            <option  value="ac_legends_gtc_porsche_904">ac_legends_gtc_porsche_904</option>
+                            <option  value="ac_legends_gtc_porsche_904_4_gts">ac_legends_gtc_porsche_904_4_gts</option>
+                            <option  value="ac_legends_gtc_porsche_911_swb">ac_legends_gtc_porsche_911_swb</option>
+                            <option  value="ac_legends_gtc_shelby_cobra_289">ac_legends_gtc_shelby_cobra_289</option>
+                            <option  value="ac_legends_gtc_shelby_cobra_comp">ac_legends_gtc_shelby_cobra_comp</option>
+                            <option  value="ac_legends_gtc_shelby_mustang350">ac_legends_gtc_shelby_mustang350</option>
+                            <option  value="ac_legends_gtc_sunbeam_tiger">ac_legends_gtc_sunbeam_tiger</option>
+                            <option  value="ac_legends_gtc_toyota_311s">ac_legends_gtc_toyota_311s</option>
+                            <option  value="ac_legends_gtc_tvr_griffith_200">ac_legends_gtc_tvr_griffith_200</option>
+                            <option  value="ac_legends_ta_camaro_1968">ac_legends_ta_camaro_1968</option>
+                            <option  value="ac_legends_ta_camaro_1969">ac_legends_ta_camaro_1969</option>
+                            <option  value="ac_legends_ta_camaro_1970">ac_legends_ta_camaro_1970</option>
+                            <option  value="ac_legends_ta_challenger_1970">ac_legends_ta_challenger_1970</option>
+                            <option  value="ac_legends_ta_cougar_1967">ac_legends_ta_cougar_1967</option>
+                            <option  value="ac_legends_ta_cuda_1970">ac_legends_ta_cuda_1970</option>
+                            <option  value="ac_legends_ta_dodge_dart_1968">ac_legends_ta_dodge_dart_1968</option>
+                            <option  value="ac_legends_ta_firebird_1968">ac_legends_ta_firebird_1968</option>
+                            <option  value="ac_legends_ta_firebird_1970">ac_legends_ta_firebird_1970</option>
+                            <option  value="ac_legends_ta_javelin_1969">ac_legends_ta_javelin_1969</option>
+                            <option  value="ac_legends_ta_javelin_1970">ac_legends_ta_javelin_1970</option>
+                            <option  value="ac_legends_ta_mustang_1965">ac_legends_ta_mustang_1965</option>
+                            <option  value="ac_legends_ta_mustang_boss_1970">ac_legends_ta_mustang_boss_1970</option>
+                            <option  value="aca_47_60_o_chevy_black_widow">aca_47_60_o_chevy_black_widow</option>
+                            <option  value="aca_75_92_rac_citroen_ds23">aca_75_92_rac_citroen_ds23</option>
+                            <option  value="aca_gt1_bugatti_eb110_ss">aca_gt1_bugatti_eb110_ss</option>
+                            <option  value="aca_gt1_ferrari_f40_bpr">aca_gt1_ferrari_f40_bpr</option>
+                            <option  value="aca_gt1_mclaren_f1_gtr">aca_gt1_mclaren_f1_gtr</option>
+                            <option  value="ag_lola_t70_rf2">ag_lola_t70_rf2</option>
+                            <option  value="ag_lola_t70_rf2_ford">ag_lola_t70_rf2_ford</option>
+                            <option  value="alfa_romeo_giulietta_spider">alfa_romeo_giulietta_spider</option>
+                            <option  value="alfa_romeo_gtam_1971">alfa_romeo_gtam_1971</option>
+                            <option  value="alg_datsun_fairlady2000_gen2">alg_datsun_fairlady2000_gen2</option>
+                            <option  value="alg_datsun_fairlady2000_road">alg_datsun_fairlady2000_road</option>
+                            <option  value="asrl_stock_car_90_oval">asrl_stock_car_90_oval</option>
+                            <option  value="austin_mini_cooper_s_appk">austin_mini_cooper_s_appk</option>
+                            <option  value="austin_sprite_1275">austin_sprite_1275</option>
+                            <option  value="auto_union_type_c">auto_union_type_c</option>
+                            <option  value="axe_morgan_3_wheeler">axe_morgan_3_wheeler</option>
+                            <option  value="bd_lola_t87_cos">bd_lola_t87_cos</option>
+                            <option  value="bd_lola_t88_chevy_a">bd_lola_t88_chevy_a</option>
+                            <option  value="bd_lola_t88_cosworth">bd_lola_t88_cosworth</option>
+                            <option  value="bd_lola_t88_judd">bd_lola_t88_judd</option>
+                            <option  value="bd_march_86c_cos">bd_march_86c_cos</option>
+                            <option  value="bd_march_87c_cos">bd_march_87c_cos</option>
+                            <option  value="bd_march_88c_chevy_a">bd_march_88c_chevy_a</option>
+                            <option  value="bd_march_88c_cos">bd_march_88c_cos</option>
+                            <option  value="bd_march_88c_por">bd_march_88c_por</option>
+                            <option  value="bd_penske_pc17_chevy_a">bd_penske_pc17_chevy_a</option>
+                            <option  value="bmw_2800cs_gr2_upd">bmw_2800cs_gr2_upd</option>
+                            <option  value="bmw_e30_w">bmw_e30_w</option>
+                            <option  value="bmw_m3_e30">bmw_m3_e30</option>
+                            <option  value="bugatti_type_32">bugatti_type_32</option>
+                            <option  value="bugatti_type_57g">bugatti_type_57g</option>
+                            <option  value="chevy_camaro_1979">chevy_camaro_1979</option>
+                            <option  value="citroen_c15_d">citroen_c15_d</option>
+                            <option  value="datsun_240z_imsa_gtu">datsun_240z_imsa_gtu</option>
+                            <option  value="delage_15s8">delage_15s8</option>
+                            <option  value="delage_2lcv">delage_2lcv</option>
+                            <option  value="dodge_monaco">dodge_monaco</option>
+                            <option  value="dodge_monaco_police">dodge_monaco_police</option>
+                            <option  value="etcc72_alfa_romeo_gta_junior_1300">etcc72_alfa_romeo_gta_junior_1300</option>
+                            <option  value="etcc72_alfa_romeo_gtam">etcc72_alfa_romeo_gtam</option>
+                            <option  value="etcc72_bmw_1600_2">etcc72_bmw_1600_2</option>
+                            <option  value="etcc72_bmw_1600_2_alpina">etcc72_bmw_1600_2_alpina</option>
+                            <option  value="etcc72_bmw_2002_tii">etcc72_bmw_2002_tii</option>
+                            <option  value="etcc72_bmw_2800_cs">etcc72_bmw_2800_cs</option>
+                            <option  value="etcc72_chevrolet_camaro">etcc72_chevrolet_camaro</option>
+                            <option  value="etcc72_datsun_cherry">etcc72_datsun_cherry</option>
+                            <option  value="etcc72_fiat_128_rally">etcc72_fiat_128_rally</option>
+                            <option  value="etcc72_ford_capri_rs_2600">etcc72_ford_capri_rs_2600</option>
+                            <option  value="etcc72_ford_escort_1300_bda">etcc72_ford_escort_1300_bda</option>
+                            <option  value="etcc72_ford_escort_1300_gt">etcc72_ford_escort_1300_gt</option>
+                            <option  value="etcc72_ford_escort_rs1600">etcc72_ford_escort_rs1600</option>
+                            <option  value="etcc72_ford_mustang_boss_302">etcc72_ford_mustang_boss_302</option>
+                            <option  value="etcc72_hillman_imp">etcc72_hillman_imp</option>
+                            <option  value="etcc72_mazda_rx3">etcc72_mazda_rx3</option>
+                            <option  value="etcc72_mercedes_300_sel">etcc72_mercedes_300_sel</option>
+                            <option  value="etcc72_morris_mini_cooper_s_widebody">etcc72_morris_mini_cooper_s_widebody</option>
+                            <option  value="etcc72_nsu_tts_1300">etcc72_nsu_tts_1300</option>
+                            <option  value="etcc72_opel_commodore_gse_3000">etcc72_opel_commodore_gse_3000</option>
+                            <option  value="etcc72_renault_8_gordini_1300">etcc72_renault_8_gordini_1300</option>
+                            <option  value="etcc72_sunbeam_imp">etcc72_sunbeam_imp</option>
+                            <option  value="etcc72_toyota_celica_1600gt">etcc72_toyota_celica_1600gt</option>
+                            <option  value="f1c75_tyrrell_p34">f1c75_tyrrell_p34</option>
+                            <option  value="ferrari_312t">ferrari_312t</option>
+                            <option  value="ferrari_512_bb_gd_rac">ferrari_512_bb_gd_rac</option>
+                            <option  value="fiat_805">fiat_805</option>
+                            <option  value="ford_anglia_1966">ford_anglia_1966</option>
+                            <option  value="ford_anglia_1966_5gears">ford_anglia_1966_5gears</option>
+                            <option  value="ford_capri_rs2600_gr2_works">ford_capri_rs2600_gr2_works</option>
+                            <option  value="ford_f350_stairs">ford_f350_stairs</option>
+                            <option  value="ford_mustang_boss_302_gr2_trans-am">ford_mustang_boss_302_gr2_trans-am</option>
+                            <option  value="gadu_alfa_romeo_tz2">gadu_alfa_romeo_tz2</option>
+                            <option  value="gadu_alfa_romeo_tz2_endurance">gadu_alfa_romeo_tz2_endurance</option>
+                            <option  value="gpl66_mclaren_m2b">gpl66_mclaren_m2b</option>
+                            <option  value="gpl67_brabham">gpl67_brabham</option>
+                            <option  value="gpl67_brm">gpl67_brm</option>
+                            <option  value="gpl67_cooper">gpl67_cooper</option>
+                            <option  value="gpl67_eagle">gpl67_eagle</option>
+                            <option  value="gpl67_ferrari_312">gpl67_ferrari_312</option>
+                            <option  value="gpl67_honda">gpl67_honda</option>
+                            <option  value="gpl67_lotus_33">gpl67_lotus_33</option>
+                            <option  value="gpl67_lotus_49">gpl67_lotus_49</option>
+                            <option  value="gpl67_matra">gpl67_matra</option>
+                            <option  value="gpl67_mclaren">gpl67_mclaren</option>
+                            <option  value="gpl_1500_brabham_bt3">gpl_1500_brabham_bt3</option>
+                            <option  value="gpl_1500_cooper_t55">gpl_1500_cooper_t55</option>
+                            <option  value="gpl_1500_ferrari_156">gpl_1500_ferrari_156</option>
+                            <option  value="gpl_1500_lotus_25">gpl_1500_lotus_25</option>
+                            <option  value="gpl_1500_porsche_804">gpl_1500_porsche_804</option>
+                            <option  value="hss_1968_daihatsu_p5">hss_1968_daihatsu_p5</option>
+                            <option  value="imsa_gto_bmw_m1">imsa_gto_bmw_m1</option>
+                            <option  value="imsa_gto_corvette">imsa_gto_corvette</option>
+                            <option  value="imsa_gto_dekon_monza">imsa_gto_dekon_monza</option>
+                            <option  value="imsa_gto_ferrari_daytona_competizione">imsa_gto_ferrari_daytona_competizione</option>
+                            <option  value="imsa_gto_porsche_924_carrera_turbo">imsa_gto_porsche_924_carrera_turbo</option>
+                            <option  value="imsa_gto_porsche_934">imsa_gto_porsche_934</option>
+                            <option  value="imsa_gtu_datsun_240z">imsa_gtu_datsun_240z</option>
+                            <option  value="imsa_gtu_mazda_rx7">imsa_gtu_mazda_rx7</option>
+                            <option  value="imsa_gtu_porsche_911s">imsa_gtu_porsche_911s</option>
+                            <option  value="imsa_gtu_porsche_914">imsa_gtu_porsche_914</option>
+                            <option  value="imsa_gtu_renault_5_turbo">imsa_gtu_renault_5_turbo</option>
+                            <option  value="imsa_gtx_bmw_320i">imsa_gtx_bmw_320i</option>
+                            <option  value="imsa_gtx_datsun_280zx_turbo">imsa_gtx_datsun_280zx_turbo</option>
+                            <option  value="imsa_gtx_ferrari_512bb_lm">imsa_gtx_ferrari_512bb_lm</option>
+                            <option  value="imsa_gtx_ford_mustang">imsa_gtx_ford_mustang</option>
+                            <option  value="imsa_gtx_greenwood_corvette">imsa_gtx_greenwood_corvette</option>
+                            <option  value="imsa_gtx_porsche_935_3.0">imsa_gtx_porsche_935_3.0</option>
+                            <option  value="imsa_gtx_porsche_935_3.2">imsa_gtx_porsche_935_3.2</option>
+                            <option  value="imsa_gtx_porsche_935_77a">imsa_gtx_porsche_935_77a</option>
+                            <option  value="imsa_gtx_porsche_935_80a">imsa_gtx_porsche_935_80a</option>
+                            <option  value="imsa_rs_alfa_romeo_gtv">imsa_rs_alfa_romeo_gtv</option>
+                            <option  value="imsa_rs_amc_pacer">imsa_rs_amc_pacer</option>
+                            <option  value="imsa_rs_bmw_320i">imsa_rs_bmw_320i</option>
+                            <option  value="imsa_rs_buick_opel">imsa_rs_buick_opel</option>
+                            <option  value="imsa_rs_datsun_1200">imsa_rs_datsun_1200</option>
+                            <option  value="imsa_rs_datsun_510">imsa_rs_datsun_510</option>
+                            <option  value="imsa_rs_mazda_rx3">imsa_rs_mazda_rx3</option>
+                            <option  value="imsa_rs_mercury_capri">imsa_rs_mercury_capri</option>
+                            <option  value="imsa_rs_toyota_corolla_sr5">imsa_rs_toyota_corolla_sr5</option>
+                            <option  value="imsa_rs_volvo_240">imsa_rs_volvo_240</option>
+                            <option  value="ks_abarth_595ss">ks_abarth_595ss</option>
+                            <option  value="ks_alfa_romeo_gta">ks_alfa_romeo_gta</option>
+                            <option  value="ks_alfa_romeo_gta_1600">ks_alfa_romeo_gta_1600</option>
+                            <option  value="ks_corvette_c7_stingray">ks_corvette_c7_stingray</option>
+                            <option  value="ks_ferrari_288_gto">ks_ferrari_288_gto</option>
+                            <option  value="ks_ford_escort_mk1">ks_ford_escort_mk1</option>
+                            <option  value="ks_ford_escort_mk1_twin_cam">ks_ford_escort_mk1_twin_cam</option>
+                            <option  value="ks_ford_mustang_2015">ks_ford_mustang_2015</option>
+                            <option  value="ks_lamborghini_countach">ks_lamborghini_countach</option>
+                            <option  value="ks_lamborghini_countach_s1">ks_lamborghini_countach_s1</option>
+                            <option  value="ks_lamborghini_miura_sv">ks_lamborghini_miura_sv</option>
+                            <option  value="ks_lotus_25">ks_lotus_25</option>
+                            <option  value="ks_maserati_250f_6cyl">ks_maserati_250f_6cyl</option>
+                            <option  value="ks_mazda_miata">ks_mazda_miata</option>
+                            <option  value="ks_mazda_mx5_nd">ks_mazda_mx5_nd</option>
+                            <option  value="ks_nissan_skyline_r34">ks_nissan_skyline_r34</option>
+                            <option  value="ks_porsche_718_spyder_rs">ks_porsche_718_spyder_rs</option>
+                            <option  value="ks_porsche_911_carrera_rsr">ks_porsche_911_carrera_rsr</option>
+                            <option  value="ks_porsche_917_30">ks_porsche_917_30</option>
+                            <option  value="ks_porsche_917_k">ks_porsche_917_k</option>
+                            <option  value="ks_porsche_935_78_moby_dick">ks_porsche_935_78_moby_dick</option>
+                            <option  value="ks_toyota_ae86">ks_toyota_ae86</option>
+                            <option  value="ks_toyota_ae86_tuned">ks_toyota_ae86_tuned</option>
+                            <option  value="ktm_xbow_r">ktm_xbow_r</option>
+                            <option  value="lotus_23c">lotus_23c</option>
+                            <option  value="lotus_98t">lotus_98t</option>
+                            <option  value="lotus_elise_sc">lotus_elise_sc</option>
+                            <option  value="mazda_rx7_imsa_gtu">mazda_rx7_imsa_gtu</option>
+                            <option  value="nm_cadillac_lemonstre">nm_cadillac_lemonstre</option>
+                            <option  value="nm_w_nardi_bisiluro">nm_w_nardi_bisiluro</option>
+                            <option  value="oneweek_porsche_912_r">oneweek_porsche_912_r</option>
+                            <option  value="opel_commodore_gse_gr2_2800">opel_commodore_gse_gr2_2800</option>
+                            <option  value="peugeot_504">peugeot_504</option>
+                            <option  value="peugeot_504_tn">peugeot_504_tn</option>
+                            <option  value="pg_pantera_gr4">pg_pantera_gr4</option>
+                            <option  value="porsche_911s_imsa_gtu">porsche_911s_imsa_gtu</option>
+                            <option  value="porsche_914_imsa_gtu">porsche_914_imsa_gtu</option>
+                            <option  value="rac_tc60_alfa_romeo_gta">rac_tc60_alfa_romeo_gta</option>
+                            <option  value="rac_tc60_austin_healey_3000">rac_tc60_austin_healey_3000</option>
+                            <option  value="rac_tc60_bmw_1600_ti_alpina">rac_tc60_bmw_1600_ti_alpina</option>
+                            <option  value="rac_tc60_ford_escort_twin_cam">rac_tc60_ford_escort_twin_cam</option>
+                            <option  value="rac_tc60_ford_fairlane">rac_tc60_ford_fairlane</option>
+                            <option  value="rac_tc60_ford_mustang_289">rac_tc60_ford_mustang_289</option>
+                            <option  value="rac_tc60_hillman_imp">rac_tc60_hillman_imp</option>
+                            <option  value="rac_tc60_jaguar_mk2_3.8">rac_tc60_jaguar_mk2_3.8</option>
+                            <option  value="rac_tc60_lotus_cortina">rac_tc60_lotus_cortina</option>
+                            <option  value="rac_tc60_mini_cooper">rac_tc60_mini_cooper</option>
+                            <option  value="rac_tc70_alfa_romeo_gtam">rac_tc70_alfa_romeo_gtam</option>
+                            <option  value="rac_tc70_amg_300_sel">rac_tc70_amg_300_sel</option>
+                            <option  value="rac_tc70_bmw_2002_tii_alpina">rac_tc70_bmw_2002_tii_alpina</option>
+                            <option  value="rac_tc70_bmw_2800_cs">rac_tc70_bmw_2800_cs</option>
+                            <option  value="rac_tc70_datsun_510">rac_tc70_datsun_510</option>
+                            <option  value="rac_tc70_ford_capri_rs_2600">rac_tc70_ford_capri_rs_2600</option>
+                            <option  value="rac_tc70_ford_escort_rs1600">rac_tc70_ford_escort_rs1600</option>
+                            <option  value="rac_tc70_ford_mustang_boss_302">rac_tc70_ford_mustang_boss_302</option>
+                            <option  value="rac_tc70_mazda_rx3">rac_tc70_mazda_rx3</option>
+                            <option  value="rac_tc70_opel_commodore_gse_3000">rac_tc70_opel_commodore_gse_3000</option>
+                            <option  value="raclub_a_autozam_az1">raclub_a_autozam_az1</option>
+                            <option  value="raclub_a_bmw_m3_e30">raclub_a_bmw_m3_e30</option>
+                            <option  value="raclub_a_porsche_911_turbo">raclub_a_porsche_911_turbo</option>
+                            <option  value="raclub_a_toyota_ae86">raclub_a_toyota_ae86</option>
+                            <option  value="raclub_a_toyota_supra_mkiv_def">raclub_a_toyota_supra_mkiv_def</option>
+                            <option  value="raclub_ac_chevy_camaro_greg">raclub_ac_chevy_camaro_greg</option>
+                            <option  value="raclub_ac_citroen_ds27_costo">raclub_ac_citroen_ds27_costo</option>
+                            <option  value="raclub_ac_fiat_x19_ben">raclub_ac_fiat_x19_ben</option>
+                            <option  value="raclub_ac_honda_city_turbo_merl">raclub_ac_honda_city_turbo_merl</option>
+                            <option  value="raclub_ac_lotus_esprit_felix">raclub_ac_lotus_esprit_felix</option>
+                            <option  value="raclub_ac_peugeot_205_bio">raclub_ac_peugeot_205_bio</option>
+                            <option  value="raclub_ac_rover_sd1_timo">raclub_ac_rover_sd1_timo</option>
+                            <option  value="rally_awd_audi_quattro">rally_awd_audi_quattro</option>
+                            <option  value="rally_awd_ford_rs200">rally_awd_ford_rs200</option>
+                            <option  value="rally_awd_lancia_delta_s4">rally_awd_lancia_delta_s4</option>
+                            <option  value="rally_awd_mg_metro_6r4">rally_awd_mg_metro_6r4</option>
+                            <option  value="rally_awd_peugeot_205_t16evo">rally_awd_peugeot_205_t16evo</option>
+                            <option  value="rally_gr2_alfa-giulietta-116">rally_gr2_alfa-giulietta-116</option>
+                            <option  value="rally_gr2_audi80-gte">rally_gr2_audi80-gte</option>
+                            <option  value="rally_gr2_audi80_B2-gls">rally_gr2_audi80_B2-gls</option>
+                            <option  value="rally_gr2_audi80_b2-gls">rally_gr2_audi80_b2-gls</option>
+                            <option  value="rally_gr2_bmw_1600ti">rally_gr2_bmw_1600ti</option>
+                            <option  value="rally_gr2_bmw_2002ti">rally_gr2_bmw_2002ti</option>
+                            <option  value="rally_gr2_bmw_320-e21">rally_gr2_bmw_320-e21</option>
+                            <option  value="rally_gr2_bmw_325-e21">rally_gr2_bmw_325-e21</option>
+                            <option  value="rally_gr2_ford_escort-mk2-1600">rally_gr2_ford_escort-mk2-1600</option>
+                            <option  value="rally_gr2_ford_escort-mk2-2000">rally_gr2_ford_escort-mk2-2000</option>
+                            <option  value="rally_gr2_jaguar-xjs">rally_gr2_jaguar-xjs</option>
+                            <option  value="rally_gr2_lancia-beta-montecarlo">rally_gr2_lancia-beta-montecarlo</option>
+                            <option  value="rally_gr2_mercedes-450slc">rally_gr2_mercedes-450slc</option>
+                            <option  value="rally_gr2_opel-commodore">rally_gr2_opel-commodore</option>
+                            <option  value="rally_gr2_opel-gt">rally_gr2_opel-gt</option>
+                            <option  value="rally_gr2_peugeot-504coupe">rally_gr2_peugeot-504coupe</option>
+                            <option  value="rally_gr2_vw-golf-1800">rally_gr2_vw-golf-1800</option>
+                            <option  value="rally_gr2_vw_scirocco-1600">rally_gr2_vw_scirocco-1600</option>
+                            <option  value="rally_ps_datsun_240z">rally_ps_datsun_240z</option>
+                            <option  value="rallycar-porsche_908_3">rallycar-porsche_908_3</option>
+                            <option  value="renault_5_turbo_imsa_gtu">renault_5_turbo_imsa_gtu</option>
+                            <option  value="rolland_pilain_a22">rolland_pilain_a22</option>
+                            <option  value="scn_charger_vac">scn_charger_vac</option>
+                            <option  value="shelby_cobra_427sc">shelby_cobra_427sc</option>
+                            <option  value="sunbeam_2l">sunbeam_2l</option>
+                            <option  value="tc_legends_911rs_27">tc_legends_911rs_27</option>
+                            <option  value="tc_legends_911rs_27_911r">tc_legends_911rs_27_911r</option>
+                            <option  value="tc_legends_alfa_gta">tc_legends_alfa_gta</option>
+                            <option  value="tc_legends_alfa_gta_gta_1600">tc_legends_alfa_gta_gta_1600</option>
+                            <option  value="tc_legends_alfa_gta_gtam_1972">tc_legends_alfa_gta_gtam_1972</option>
+                            <option  value="tc_legends_alpine_a110">tc_legends_alpine_a110</option>
+                            <option  value="tc_legends_alpine_a110_1774cc_16v">tc_legends_alpine_a110_1774cc_16v</option>
+                            <option  value="tc_legends_amg_300sel">tc_legends_amg_300sel</option>
+                            <option  value="tc_legends_amg_300sel_upd">tc_legends_amg_300sel_upd</option>
+                            <option  value="tc_legends_austin_healey_3000">tc_legends_austin_healey_3000</option>
+                            <option  value="tc_legends_austin_healey_3000_260hp">tc_legends_austin_healey_3000_260hp</option>
+                            <option  value="tc_legends_austin_healey_3000_austin_healey_3000_mkii_260hp">tc_legends_austin_healey_3000_austin_healey_3000_mkii_260hp</option>
+                            <option  value="tc_legends_bmw_1600_ti_alpina">tc_legends_bmw_1600_ti_alpina</option>
+                            <option  value="tc_legends_bmw_2002">tc_legends_bmw_2002</option>
+                            <option  value="tc_legends_bmw_2002_Tii_Alpina">tc_legends_bmw_2002_Tii_Alpina</option>
+                            <option  value="tc_legends_bmw_2002_tii_alpina">tc_legends_bmw_2002_tii_alpina</option>
+                            <option  value="tc_legends_cortina">tc_legends_cortina</option>
+                            <option  value="tc_legends_cortina_mkii_180hp">tc_legends_cortina_mkii_180hp</option>
+                            <option  value="tc_legends_datsun_510">tc_legends_datsun_510</option>
+                            <option  value="tc_legends_datsun_510_230hp">tc_legends_datsun_510_230hp</option>
+                            <option  value="tc_legends_ford_escort">tc_legends_ford_escort</option>
+                            <option  value="tc_legends_ford_escort_230hp_bda">tc_legends_ford_escort_230hp_bda</option>
+                            <option  value="tc_legends_ford_escort_tc_etcc">tc_legends_ford_escort_tc_etcc</option>
+                            <option  value="tc_legends_ford_fairlane_427ci">tc_legends_ford_fairlane_427ci</option>
+                            <option  value="tc_legends_ford_mustang_gt350r_350hp">tc_legends_ford_mustang_gt350r_350hp</option>
+                            <option  value="tc_legends_hillman_imp">tc_legends_hillman_imp</option>
+                            <option  value="tc_legends_hillman_imp_1200cc">tc_legends_hillman_imp_1200cc</option>
+                            <option  value="tc_legends_hillman_imp_1200cc_132hp">tc_legends_hillman_imp_1200cc_132hp</option>
+                            <option  value="tc_legends_jaguar_mk2">tc_legends_jaguar_mk2</option>
+                            <option  value="tc_legends_jaguar_mk2_3.8">tc_legends_jaguar_mk2_3.8</option>
+                            <option  value="tc_legends_jaguar_mk2_300hp">tc_legends_jaguar_mk2_300hp</option>
+                            <option  value="tc_legends_mazda_rx3">tc_legends_mazda_rx3</option>
+                            <option  value="tc_legends_mazda_rx3_scca">tc_legends_mazda_rx3_scca</option>
+                            <option  value="tc_legends_mazda_rx3_scca_240hp">tc_legends_mazda_rx3_scca_240hp</option>
+                            <option  value="tc_legends_mg_a_race">tc_legends_mg_a_race</option>
+                            <option  value="tc_legends_mg_a_race_upd">tc_legends_mg_a_race_upd</option>
+                            <option  value="tc_legends_mgbgt">tc_legends_mgbgt</option>
+                            <option  value="tc_legends_mgbgt_upd">tc_legends_mgbgt_upd</option>
+                            <option  value="tc_legends_mini_cooper">tc_legends_mini_cooper</option>
+                            <option  value="tc_legends_mini_cooper_mkii_1300cc">tc_legends_mini_cooper_mkii_1300cc</option>
+                            <option  value="tc_legends_toyota_2000gt_311s">tc_legends_toyota_2000gt_311s</option>
+                            <option  value="tmm_tatra_603">tmm_tatra_603</option>
+                            <option  value="toyota_celicagts1986">toyota_celicagts1986</option>
+                            <option  value="vac_groupc_936c">vac_groupc_936c</option>
+                            <option  value="vac_groupc_956">vac_groupc_956</option>
+                            <option  value="vac_groupc_ck5">vac_groupc_ck5</option>
+                            <option  value="vac_groupc_emka_c83">vac_groupc_emka_c83</option>
+                            <option  value="vac_groupc_ford_c100">vac_groupc_ford_c100</option>
+                            <option  value="vac_groupc_lancia_lc2_83_lm">vac_groupc_lancia_lc2_83_lm</option>
+                            <option  value="vac_groupc_lola_t610">vac_groupc_lola_t610</option>
+                            <option  value="vac_groupc_nimrod_nrac2">vac_groupc_nimrod_nrac2</option>
+                            <option  value="vac_groupc_rondeau_m382">vac_groupc_rondeau_m382</option>
+                            <option  value="vac_groupc_sauber_shs_c6">vac_groupc_sauber_shs_c6</option>
+                            <option  value="vac_groupc_wm_p83">vac_groupc_wm_p83</option>
+                            <option  value="vac_lola_95">vac_lola_95</option>
+                            <option  value="vac_reynard_95">vac_reynard_95</option>
+                            <option  value="vac_russell_alexis_mk14">vac_russell_alexis_mk14</option>
+                            <option  value="vec_gt_911rsr_74">vec_gt_911rsr_74</option>
+                            <option  value="vec_gt_bmw_csl">vec_gt_bmw_csl</option>
+                            <option  value="vec_gt_broadspeedjaguar">vec_gt_broadspeedjaguar</option>
+                            <option  value="vec_gt_capri_rs3100">vec_gt_capri_rs3100</option>
+                            <option  value="vec_gt_corvette69">vec_gt_corvette69</option>
+                            <option  value="vec_gt_detomaso_pantera">vec_gt_detomaso_pantera</option>
+                            <option  value="vec_gt_ferrari_365gtb">vec_gt_ferrari_365gtb</option>
+                            <option  value="vec_gt_nissan_gtr2000">vec_gt_nissan_gtr2000</option>
+                            <option  value="voisin_c6_laboratoire">voisin_c6_laboratoire</option>
+                            <option  value="vrc_1991_jordan_191">vrc_1991_jordan_191</option>
+                            <option  value="vrc_formula_na_1999_oval">vrc_formula_na_1999_oval</option>
+                            <option  value="wsc_legends_275p2">wsc_legends_275p2</option>
+                            <option  value="wsc_legends_330p2">wsc_legends_330p2</option>
+                            <option  value="wsc_legends_330p3">wsc_legends_330p3</option>
+                            <option selected value="wsc_legends_330p3_spyder">wsc_legends_330p3_spyder</option>
+                            <option selected value="wsc_legends_330p4">wsc_legends_330p4</option>
+                            <option  value="wsc_legends_330p4_spyder">wsc_legends_330p4_spyder</option>
+                            <option  value="wsc_legends_365p2">wsc_legends_365p2</option>
+                            <option  value="wsc_legends_365p2_drogo">wsc_legends_365p2_drogo</option>
+                            <option  value="wsc_legends_365p2_spyder">wsc_legends_365p2_spyder</option>
+                            <option  value="wsc_legends_alfa_romeo_tipo_33">wsc_legends_alfa_romeo_tipo_33</option>
+                            <option  value="wsc_legends_alpine_a210_1500">wsc_legends_alpine_a210_1500</option>
+                            <option  value="wsc_legends_alpine_a211">wsc_legends_alpine_a211</option>
+                            <option  value="wsc_legends_brabham_bt8">wsc_legends_brabham_bt8</option>
+                            <option  value="wsc_legends_chaparral_2d_66">wsc_legends_chaparral_2d_66</option>
+                            <option selected value="wsc_legends_chaparral_2d_67">wsc_legends_chaparral_2d_67</option>
+                            <option  value="wsc_legends_chaparral_2f">wsc_legends_chaparral_2f</option>
+                            <option  value="wsc_legends_chevron_b8_fva">wsc_legends_chevron_b8_fva</option>
+                            <option  value="wsc_legends_chevron_gt">wsc_legends_chevron_gt</option>
+                            <option  value="wsc_legends_corvette_gs">wsc_legends_corvette_gs</option>
+                            <option  value="wsc_legends_corvette_gs_roadster">wsc_legends_corvette_gs_roadster</option>
+                            <option  value="wsc_legends_dino_206s">wsc_legends_dino_206s</option>
+                            <option  value="wsc_legends_dino_206s_berlinetta">wsc_legends_dino_206s_berlinetta</option>
+                            <option  value="wsc_legends_ferrari_250lm">wsc_legends_ferrari_250lm</option>
+                            <option  value="wsc_legends_ford_gt40_mk1">wsc_legends_ford_gt40_mk1</option>
+                            <option selected value="wsc_legends_ford_gt_x1">wsc_legends_ford_gt_x1</option>
+                            <option  value="wsc_legends_gt40_mk2">wsc_legends_gt40_mk2</option>
+                            <option selected value="wsc_legends_gt40_mk4">wsc_legends_gt40_mk4</option>
+                            <option  value="wsc_legends_iso_grifo_a3c">wsc_legends_iso_grifo_a3c</option>
+                            <option selected value="wsc_legends_jaguar_xj13">wsc_legends_jaguar_xj13</option>
+                            <option selected value="wsc_legends_lola_t70_mk3gt">wsc_legends_lola_t70_mk3gt</option>
+                            <option  value="wsc_legends_lotus_47">wsc_legends_lotus_47</option>
+                            <option selected value="wsc_legends_maserati_tipo_151-3">wsc_legends_maserati_tipo_151-3</option>
+                            <option  value="wsc_legends_matra_m630_brm">wsc_legends_matra_m630_brm</option>
+                            <option  value="wsc_legends_nissan_r380">wsc_legends_nissan_r380</option>
+                            <option  value="wsc_legends_porsche_904-8">wsc_legends_porsche_904-8</option>
+                            <option  value="wsc_legends_porsche_906">wsc_legends_porsche_906</option>
+                            <option  value="wsc_legends_porsche_906_e66">wsc_legends_porsche_906_e66</option>
+                            <option  value="wsc_legends_porsche_906_lh">wsc_legends_porsche_906_lh</option>
+                            <option  value="wsc_legends_porsche_910">wsc_legends_porsche_910</option>
+                            <option selected value="wsc_legends_porsche_910-8">wsc_legends_porsche_910-8</option>
+                            <option  value="wsc_legends_shelby_cobra_427sc">wsc_legends_shelby_cobra_427sc</option>
+                            <option  value="wsc_legends_shelby_daytona">wsc_legends_shelby_daytona</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <!-- *********** detailed filters ************* -->
+        <div class="col-md-12 collapse-group" id="filterCollapse">
+            <div class="col-md-6">
+                <form class="form-horizontal" role="form">
+                    <div class="form-group collapse ">
+                        <div class="row">
+                            <label for="valid" class="col-md-2 control-label">Valid</label>
+                            <div class="col-md-10">
+                                <select id="valid" name="valid" class="form-control multiselect" multiple="multiple">
+                                    <option selected value="1">valid</option>
+                                    <option selected value="2">unknown</option>
+                                    <option  value="0">invalid</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <label for="tyres" class="col-md-2 control-label">Tyres</label>
+                            <div class="col-md-10">
+                                <select id="tyres" name="tyres" class="form-control multiselect" multiple="multiple">
+                                    <option selected value="(SS)">Slicks Supersoft</option>
+                                    <option selected value="(S)">Slicks Soft</option>
+                                    <option selected value="(M)">Slicks Medium</option>
+                                    <option selected value="(H)">Slicks Hard</option>
+                                    <option selected value="(SH)">Slicks Superhard</option>
+                                    <option selected value="(ST)">Street</option>
+                                    <option selected value="(SV)">Street Vintage</option>
+                                    <option selected value="(SM)">Semislicks</option>
+                                    <option selected value="(HR)">Hypercar Road</option>
+                                    <option selected value="(I)">Intermediate</option>
+                                    <option selected value="(V)">Vintage</option>
+                                    <option selected value="(E)">Eco</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <label for="datespan" class="col-md-2 control-label">Date</label>
+                            <div id="datespan" class="col-md-10">
+                                <div class="form-group row">
+                                    <label for="dateStart" class="col-md-2 control-label">From</label>
+                                    <div class="col-md-3">
+                                        <input id="dateStart" class="datepicker form-control" data-date-format="yyyy-mm-dd" value="" />
+                                    </div>
+                                    <label for="dateStop" class="col-md-2 control-label">To</label>
+                                    <div class="col-md-3">
+                                        <input id="dateStop" class="datepicker form-control" data-date-format="yyyy-mm-dd" value="" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <form class="form-horizontal" role="form">
+                    <div class="form-group collapse ">
+                        <div class="row">
+                            <label for="servers" class="col-md-2 control-label">Servers</label>
+                            <div class="col-md-10">
+                                <select id="servers" name="servers" class="form-control multiselect" multiple="multiple">
+                                    <option selected value="SRV1">SRV1</option>
+                                    <option  value="SRV2">SRV2</option>
+                                    <option  value="SRV3">SRV3</option>
+                                    <option  value="SRV4">SRV4</option>
+                                    <option  value="SRV5">SRV5</option>
+                                    <option  value="SRV6">SRV6</option>
+                                    <option  value="SRV7">SRV7</option>
+                                    <option  value="srvopen">srvopen</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <label for="ranking" class="col-md-2 control-label">Ranking</label>
+                            <div class="col-md-10">
+                                <select id="ranking" name="ranking" class="form-control multiselect">
+                                    <option selected value="0">Multiple cars and multiple drivers</option>
+                                    <option  value="1">One entry per driver</option>
+                                    <option  value="2">One entry per car</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <label for="groups" class="col-md-2 control-label">Groups</label>
+                            <div class="col-md-10">
+                                <select id="groups" name="groups" class="form-control multiselect" multiple="multiple">
+                                    <option  value="0">(everyone)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6 col-md-offset-6">
+            <form class="form-horizontal collapse-group" role="form">
+                <!-- *********** buttons ************* -->
+                <div class="form-group form-group">
+                    <div class="col-md-offset-0 col-md-2">
+                        <a class="form-control btn btn-info"
+                           role="button"
+                           onclick="toggleCollapse(getElementById('filterCollapse'), this)"
+                           href="#">+</a>
+                    </div>
+                    <div class="col-md-offset-0 col-md-5">
+                        <a class="form-control btn btn-primary"
+                           role="button"
+                           onclick="applySelections()"
+                           href="#">Show selected</a>
+                    </div>
+                    <div class="col-md-offset-0 col-md-5">
+                        <div class="btn-group">
+                            <button type="button" class="form-control btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Show last combo <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a href="lapstat?currservers=SRV1" role="button">Server SRV1</a>
+                                <li><a href="lapstat?currservers=SRV2" role="button">Server SRV2</a>
+                                <li><a href="lapstat?currservers=SRV3" role="button">Server SRV3</a>
+                                <li><a href="lapstat?currservers=SRV4" role="button">Server SRV4</a>
+                                <li><a href="lapstat?currservers=SRV5" role="button">Server SRV5</a>
+                                <li><a href="lapstat?currservers=SRV6" role="button">Server SRV6</a>
+                                <li><a href="lapstat?currservers=SRV7" role="button">Server SRV7</a>
+                                <li><a href="lapstat?currservers=srvopen" role="button">Server srvopen</a>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+    <div class="row"><div class="col-md-12">
+        <table class="table table-striped table-condensed table-bordered table-hover">
+            <thead>
+            <tr>
+                <th>Pos</th>
+                <th>Driver</th>
+                <th>Car</th>
+                <th>Best lap</th>
+                <th>Gap to 1st</th>
+                <th>S1</th>
+                <th>S2</th>
+                <th>S3</th>
+                <th>Valid</th>
+                <th>Laps</th>
+                <th>Date</th>
+                <th>Grip</th>
+                <th>Amb./Track</th>
+                <th>vMax</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr class='clickableRow' href="lapdetails?lapid=469675#">
+                <td class="bestLap" >1.</td>
+                <td class="bestLap" >Riley Vance</td>
+                <td class="bestLap" >
+                        wsc_legends_330p4
+
+                </td>
+                <td class="bestLap" >00:56.597</td>
+                <td class="bestLap" >+00.000</td>
+                <td class="bestSector" >00:15.629</td>
+                <td class="bestSector" >00:23.815</td>
+                <td class="bestSector" >00:17.153</td>
+                <td>yes</td>
+                <td>3</td>
+                <td>2026-10-13 02:41</td>
+                <td>97.0%</td>
+                <td>28 °C/34 °C</td>
+                <td>258 km/h</td>
+            </tr>
+            <tr class='clickableRow' href="lapdetails?lapid=469663#">
+                <td class="bestLap" >2.</td>
+                <td class="bestLap" >Frost</td>
+                <td class="bestLap" >
+                        wsc_legends_gt40_mk4
+
+                </td>
+                <td class="bestLap" >00:56.731</td>
+                <td class="bestLap" >+00.134</td>
+                <td >-</td>
+                <td >-</td>
+                <td >-</td>
+                <td>yes</td>
+                <td>17</td>
+                <td>2026-10-13 01:03</td>
+                <td>97.0%</td>
+                <td>28 °C/34 °C</td>
+                <td>268 km/h</td>
+            </tr>
+            </tbody>
+        </table>
+    </div></div>
+</div>
+
+
+
+
+
+<nav class="navbar navbar-inverse navbar-fixed-bottom">
+    <div class="container-fluid">
+       <div class="col-sm-3">
+       </div>
+
+        <div style="text-align:center" class="col-sm-6">
+                <ul class="pagination pagination-sm">
+                    <li><a href="/lapstat?currservers=SRV1&page=0"><span class="glyphicon glyphicon-fast-backward"></span></a></li>
+                    <li class="disabled"><a href="/lapstat?currservers=SRV1&page=-1"><span class="glyphicon glyphicon-backward"></span></a></li>
+                    <li class="active"><a href="/lapstat?currservers=SRV1&page=0">1</a></li>
+                    <li class="disabled"><a href="/lapstat?currservers=SRV1&page=1"><span class="glyphicon glyphicon-forward"></span></a></li>
+                    <li><a href="/lapstat?currservers=SRV1&page=0"><span class="glyphicon glyphicon-fast-forward"></span></a></li>
+                </ul>
+        </div>
+        <div class="col-sm-3">
+                <p class="navbar-text navbar-right">
+                   v3.5.1 provided by <b>Neys</b>
+                </p>
+        </ul>
+    </div>
+</nav>
+<!--</div>-->
+</body>
+
+<!-- Initialize the multiselect plugin: -->
+<script type="text/javascript">
+$(document).ready(function() {
+    $('.multiselect').multiselect({
+        buttonWidth: '100%',
+        includeSelectAllOption: true,
+        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
+        maxHeight: 350
+    });
+});
+</script>
+
+<!-- Support clickable table rows -->
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+      $(".clickableRow td:not(.noclick)").click(function() {
+            var tr = $(this).context.parentElement;
+            window.document.location = $(tr).attr("href");
+      });
+});
+</script>
+
+<!-- Initialize the datepicker plugin -->
+<script type="text/javascript">
+$('.datepicker').datepicker()
+</script>
+</html>

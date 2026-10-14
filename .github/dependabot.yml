@@ -1,0 +1,12 @@
+# Keeps the action pins in the workflows current. The pins are full commit SHAs,
+# so without this they would never move on their own.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'ci'
+    labels:
+      - dependencies
