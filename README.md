@@ -160,6 +160,17 @@ button to press. Deleting an address from the field drops its bindings with it.
 
 Server lists and track lists are cached per address, so two instances never mix.
 
+The field takes the site, not a page of it. A link copied from the browser, such
+as `https://stracker.example.com/lapstat?currservers=SRV1`, is refused and named
+as what it is, under the field, with the rest of the list still working:
+
+```
+skipped: https://stracker.example.com/lapstat?currservers=SRV1 (a page of the site, not its address)
+```
+
+Only those three page names are refused. A stracker that lives in a folder, such
+as `https://example.com/stracker`, is a valid address and stays valid.
+
 ## The lap list window
 
 Toolbar, left to right:
@@ -171,7 +182,13 @@ Toolbar, left to right:
 | `Auto` | keep refreshing on an interval |
 | Interval | `30s`, `60s`, `2m`, `5m` — used only while `Auto` is on |
 | `Always fastest` | always take the fastest lap of the list |
+| `?` | field hints on and off; off until you turn them on, remembered afterwards |
 | `▸ Details` / `▾ Details` | open or close the diagnostics block |
+
+Every control also explains itself on hover while the hints are on: what to type
+into it, what the switch changes, which of several things a list is. They are off
+by default because a hint that is always there stops being read; the button that
+turns them on explains itself even while they are off.
 
 Below the toolbar:
 

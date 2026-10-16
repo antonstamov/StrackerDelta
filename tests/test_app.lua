@@ -55,6 +55,8 @@ local env = {
   serverName = 'SRV1',
   requests = {},
   posts = {},           -- what went out in a body: url, body, content type
+  tooltipTexts = {},    -- what the tooltips under the mouse would have shown
+  styleColors = {},    -- every colour the app pushed for a frame
   windowOps = {},
   savedFiles = {},
   clicks = {},
@@ -111,7 +113,7 @@ _G.script = {}
 local storageKeys = { serverAddresses = '', serverBindings = '',
                       listServer = '', listScope = 'session',
                       autoRefresh = false, refreshSeconds = 60,
-                      detailsOpen = false, alwaysFastest = false,
+                      detailsOpen = false, alwaysFastest = false, hints = false,
                       textSizePx = 25, lastLapId = 0 }
 env.storage = storageKeys
 
@@ -212,7 +214,9 @@ _G.ui = {
   popFont = function() end,
   setNextTextBold = function() end,
   pushStyleVar = function() end,
-  pushStyleColor = function() end,
+  pushStyleColor = function(name, colour)
+    env.styleColors[#env.styleColors + 1] = { name = name, colour = colour }
+  end,
   popStyleColor = function() end,
   Font = { Small = 1, Tiny = 2, Monospace = 3, Main = 4, Italic = 5, Title = 6, Huge = 7, SmallItalic = 8 },
   StyleVar = { WindowPadding = 1, ItemSpacing = 2 },
@@ -223,7 +227,8 @@ _G.ui = {
     if env.rowClicks[label] then env.rowClicks[label] = nil return true end
     return false
   end,
-  itemHovered = function() return env.rowHovered == true end,
+  -- the mouse is over a row (the lap table) or over the window (any field)
+  itemHovered = function() return env.rowHovered == true or env.hovered == true end,
   drawRectFilled = function(p1, p2, color)
     -- a rule is a filled rect of less than two pixels: the separators
     if p2.y - p1.y < 2 then env.events[#env.events + 1] = 'rule' end
@@ -252,7 +257,23 @@ _G.ui = {
   setNextWindowPosition = function() end,
   accessAppWindow = function() return nil end,
   getAppWindows = function() return {} end,
-  tooltip = function(_, content) if content then content() end end,
+  -- both shapes the game takes: ui.tooltip(content) and ui.tooltip(padding, content).
+  -- What a tooltip draws is an overlay, so it is kept out of the texts and events
+  -- of the window itself and goes into a list of its own.
+  tooltip = function(a, b)
+    local content = type(a) == 'function' and a or b
+    if not content then return end
+    local texts, events = env.texts, env.events
+    env.texts, env.events = {}, {}
+    content()
+    -- every text drawn lands in the events as text:<what>, whatever drew it
+    local parts = {}
+    for _, event in ipairs(env.events) do
+      if event:sub(1, 5) == 'text:' then parts[#parts + 1] = event:sub(6) end
+    end
+    env.tooltipTexts[#env.tooltipTexts + 1] = table.concat(parts, ' | ')
+    env.texts, env.events = texts, events
+  end,
   mouseClicked = function()
     if env.clickOnButton then env.clickOnButton = false return true end
     return false
@@ -369,6 +390,13 @@ _G.web = {
     if env.failNext then
       env.failNext = false
       callback(env.failWithMessage or 'connection refused', nil)
+      return
+    end
+    -- an address that does not answer as a stracker site. The site query is the bare
+    -- page with nothing on it, which is the only request that says "is this a
+    -- stracker"; a list query failing is a different thing entirely.
+    if env.failServers and not url:find('?') then
+      callback('HTTP 500', nil)
       return
     end
     local ok, err = pcall(callback, nil, { status = 200, body = bodyFor(url) })
@@ -604,7 +632,7 @@ end
 check('the error text is visible in Details', foundReason, true)
 
 -- Details collapses again on a click on the toggle
-env.clicks[app.config.detailsOpen and '▾ Details' or '▸ Details'] = true
+env.clicks['Details'] = true
 appScript.windowLaps()
 check('Details collapses on click', app.config.detailsOpen, false)
 
@@ -1178,6 +1206,207 @@ drawOrder()
 check('an unreported server name is said in words',
       drawnTexts()['not reported by the game'] ~= nil, true)
 env.serverName = 'SRV1'
+
+-- ---------------------------------------------------------------------------
+-- 22) Field hints: off until asked for, then on every field. The first user is
+-- the reason they exist - the address of a stracker site is not something a label
+-- can explain - and the reason they are off by default is that they get in the way
+-- ---------------------------------------------------------------------------
+app.config.detailsOpen = true
+
+local function tooltipWith(word)
+  for _, text in ipairs(env.tooltipTexts) do
+    if text:find(word, 1, true) then return text end
+  end
+  return nil
+end
+
+local function buttonFramesPainted()
+  local painted = 0
+  for _, entry in ipairs(env.styleColors) do
+    if entry.name == _G.ui.StyleColor.Button then painted = painted + 1 end
+  end
+  return painted
+end
+
+env.hovered = true
+env.tooltipTexts = {}
+env.styleColors = {}
+appScript.windowLaps()
+check('hints are off to begin with', app.config.hints, false)
+check('only the switch explains itself', tooltipWith('Field hints are off') ~= nil, true)
+checkNil('the fields are not explained', tooltipWith('root only'))
+check('the switch looks the same as any button', buttonFramesPainted(), 0)
+check('and says which way it is with no word next to it',
+      drawnTexts()['hints off'] == nil and drawnTexts()['hints on'] == nil, true)
+
+env.clicks['?'] = true
+appScript.windowLaps()             -- the frame the switch turned
+env.tooltipTexts = {}
+env.styleColors = {}
+appScript.windowLaps()
+check('the switch turned the hints on', app.config.hints, true)
+check('and the button is painted as one', buttonFramesPainted() > 0, true)
+check('the fields offer something', #env.tooltipTexts > 5, true)
+check('the address field says what an address is',
+      tooltipWith('root only') ~= nil, true)
+check('and says that a page of the site is not one',
+      tooltipWith('lapdetails') ~= nil, true)
+check('the list field explains the three scopes',
+      tooltipWith('Track + car') ~= nil, true)
+check('the reference switch explains what it changes',
+      tooltipWith('reference') ~= nil, true)
+check('the filter says what it filters',
+      tooltipWith('Show only the rows') ~= nil, true)
+
+-- a tooltip is an overlay: what it says is not drawn into the window itself
+local windowTexts = drawnTexts()
+check('a tooltip draws nothing into the window',
+      windowTexts['root only'] == nil and windowTexts['Show only the rows'] == nil, true)
+
+env.clicks['?'] = true
+appScript.windowLaps()
+env.tooltipTexts = {}
+appScript.windowLaps()
+check('and the switch turns them off again', app.config.hints, false)
+checkNil('the fields go quiet', tooltipWith('root only'))
+
+env.hovered = nil
+env.tooltipTexts = {}
+
+-- ---------------------------------------------------------------------------
+-- 24) The font of the game has a handful of symbols and no warning for the ones it
+-- does not: an unknown character is drawn as a box, in the interface, in silence.
+-- Everything the app draws has to stay inside what is known to be drawable.
+-- ---------------------------------------------------------------------------
+
+-- What the game is known to draw. Everything else comes out as a box, and
+-- nothing says so. U+00B7 middle dot and U+2022 bullet are the app's own and were
+-- seen on screen; U+00B0 degree is not ours at all - it is how the site writes track
+-- temperatures, and a value has to be shown the way the server sent it.
+local DRAWABLE = { [0xB7] = true, [0x2022] = true, [0xB0] = true }
+--- The code point of one utf-8 sequence, so the guard below can name it.
+local function codePointOf(bytes)
+  local first = string.byte(bytes, 1)
+  if #bytes == 1 then return first end
+  if #bytes == 2 then
+    return (first - 0xC0) * 64 + (string.byte(bytes, 2) - 0x80)
+  end
+  if #bytes == 3 then
+    return (first - 0xE0) * 4096 + (string.byte(bytes, 2) - 0x80) * 64 + (string.byte(bytes, 3) - 0x80)
+  end
+  return (first - 0xF0) * 262144 + (string.byte(bytes, 2) - 0x80) * 4096 +
+         (string.byte(bytes, 3) - 0x80) * 64 + (string.byte(bytes, 4) - 0x80)
+end
+
+local function glyphsTheFontCannotDraw(value)
+  local bad = {}
+  local rest = tostring(value)
+  while true do
+    -- the sequence has to be captured: without a capture the third result of
+    -- find is nil and this loop quietly finds nothing at all
+    local start, stop, bytes = rest:find('([\128-\255][\128-\191]*)')
+    if not start then break end
+    rest = rest:sub(stop + 1)
+    local code = codePointOf(bytes)
+    if not DRAWABLE[code] then
+      bad[#bad + 1] = string.format('U+%04X', code)
+    end
+  end
+  return bad
+end
+
+local problems = {}
+for _, entry in ipairs(env.texts) do
+  for _, glyph in ipairs(glyphsTheFontCannotDraw(entry.text)) do problems[glyph] = true end
+end
+local foundGlyphs = {}
+for glyph in pairs(problems) do foundGlyphs[#foundGlyphs + 1] = glyph end
+table.sort(foundGlyphs)
+check('nothing is drawn that the font cannot draw', #foundGlyphs, 0)
+
+-- the button says one thing in both states, and the block below is what says
+-- whether it is open
+local function labelIsPlainDetails()
+  for _, event in ipairs(env.events) do
+    if event == 'button:Details' then return true end
+  end
+  return false
+end
+
+app.config.detailsOpen = false
+env.events = {}
+env.texts = {}
+appScript.windowLaps()
+check('the closed block is labelled Details', labelIsPlainDetails(), true)
+checkNil('and the block is not drawn', drawnTexts()['delta text size'])
+
+app.config.detailsOpen = true
+env.events = {}
+env.texts = {}
+appScript.windowLaps()
+check('the open block is labelled the same', labelIsPlainDetails(), true)
+check('and the block is drawn', drawnTexts()['delta text size'] ~= nil, true)
+
+-- left as the section above found it: the next one types into the address field,
+-- which is drawn only while the block is open
+app.config.detailsOpen = true
+env.events = {}
+
+-- ---------------------------------------------------------------------------
+-- 23) An address that is not a stracker site: said in words, asked once. The site
+-- answers its own main page for any path it does not know, so a wrong address can
+-- only be caught by the answer, and the answer has to be read as what it is
+-- ---------------------------------------------------------------------------
+local function typeAddresses(text)
+  env.inputTextResult = text
+  appScript.windowLaps()
+end
+
+setAddresses('https://stracker.test')
+app.config.serverBindings = ''
+app.config.autoRefresh = false
+s.address = nil
+env.failServers = true
+
+-- a new list in the field is what forgets everything that was known about the old
+env.requests = {}
+typeAddresses('https://stracker.test, https://second.test')
+check('typing the list asks nothing by itself', #env.requests, 0)
+
+refreshNow()
+check('the refusal is said in words',
+      s.status:find('does not answer as a stracker site', 1, true) ~= nil, true)
+check('with the reason it answered with', s.status:find('HTTP 500', 1, true) ~= nil, true)
+checkNil('and it is not the word "detecting"', s.status:find('detecting', 1, true))
+local askedOnce = #env.requests
+check('it did ask', askedOnce > 0, true)
+
+-- the timer must not keep asking: the status has to stay the reason, not the wait
+app.config.autoRefresh = true
+s.clock = s.clock + 61
+appScript.update(0.016)
+appScript.update(0.016)
+check('the timer asks nothing', #env.requests, askedOnce)
+check('and the reason is still what it says',
+      s.status:find('does not answer as a stracker site', 1, true) ~= nil, true)
+
+-- by hand it asks again: that is a person saying "try again"
+refreshNow()
+-- refreshNow clears the request list, so anything in it is what this click asked
+check('the Refresh button asks again', #env.requests > 0, true)
+
+-- typing the list forgets the refusal: the new address deserves a question
+env.requests = {}
+typeAddresses('https://stracker.test')
+s.clock = s.clock + 61
+appScript.update(0.016)
+appScript.update(0.016)
+check('a refusal is not kept forever', #env.requests > 0, true)
+
+env.failServers = nil
+app.config.autoRefresh = false
+refreshNow()
 
 print('')
 print(string.format('%d checks, %d failures', checks, failures))

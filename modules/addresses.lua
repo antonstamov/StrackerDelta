@@ -18,6 +18,16 @@ end
 -- Addresses
 -- ---------------------------------------------------------------------------
 
+-- The pages the site is made of. A link to one of them is what a person pastes when
+-- they copy the address bar instead of the site name, and it is not a site: the app
+-- would build its own queries behind it and hear nothing. The list is all of them,
+-- because the site answers its own main page for a path it does not know, and a
+-- status code cannot tell a wrong address from a right one any other way.
+local PAGE_NAMES = {
+  mainpage = true, lapstat = true, statistics = true, lapdetails = true,
+  players = true, championship = true, livemap = true, sessionstat = true,
+}
+
 --- One address as the app will use it: scheme added, trailing slashes cut.
 --- Returns nil plus the reason when the text cannot be used as an address.
 function M.normalise(url)
@@ -34,6 +44,20 @@ function M.normalise(url)
   if host == '' then return nil, 'no host' end
   if host:find('%s') then return nil, 'no spaces in an address' end
   if not host:find('[%.:]') and host ~= 'localhost' then return nil, 'no host' end
+
+  -- An address never carries a query: that is a page of the site with its filter on,
+  -- which is what happens when the whole address bar is pasted in.
+  if text:find('?') then return nil, 'a page of the site, not its address' end
+
+  -- A stracker in a folder is a path and stays a valid address, so only the pages
+  -- of the site are refused, by name and whatever follows them.
+  local path = text:match('^https?://[^/]+/(.*)$')
+  if path then
+    local page = (path:match('^([%w%-_]+)') or ''):lower()
+    if PAGE_NAMES[page] then
+      return nil, 'a page of the site, not its address'
+    end
+  end
 
   return (text:gsub('/+$', ''))
 end
