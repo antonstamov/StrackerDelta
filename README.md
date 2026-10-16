@@ -212,11 +212,11 @@ the progress (`loading page 2/4`). The last requested URL is shown in *Details*.
 `This track` really means every car. A lapstat page filtered by track carries the
 complete car list in its form, so the app asks for that page first and then repeats the
 query with all of those cars, fetching every page. That car list makes a url of about
-9 KB, which a game client may refuse; when it does, the list is asked for in groups of
-50 cars, and a group that is refused as well is asked again in halves until the client
-takes it. The answers of all of them are merged. Only a group that stays refused is
-given up, and the status then says how many were lost. The result is the same either
-way: a large track comes to a few hundred laps, and the number in the status is the
+9 KB, and the game refuses to send a url that long, so the query goes out as a `POST` and
+the car list travels in the body instead of in the address: the url stays the bare name of
+the page, and every car goes out in one request. The site reads a form body the same way
+it reads a query string, so the answer is the same list the url would have given. The
+result is a large track coming to a few hundred laps, and the number in the status is the
 number of distinct laps, since pages of one query can repeat a lap and a repeated lap
 is listed once.
 
@@ -272,14 +272,13 @@ line.
 | `ac server` | output | server name as the game reports it, or that it did not report one |
 | `stracker server` | output | id in use plus how it was detected, only in the Session scope |
 | `asking for` | output | what is being asked for, in words: a session, every car on a track, or one car |
-| `request` | output | the last query in words, with the page or car query count |
+| `request` | output | the last query in words, with the page count when the site paginates |
 | `updated` | output | time of the last successful list load |
 | `reference lap` | output | lap id, number of profile points, note when it is not in the list |
 
 A request that failed shows the query it died on, with its length, because that is the
 one case where the query itself is the answer. The raw path of a successful query stays
-in `debug.log`: it repeats itself per page and per car query and says nothing at a
-glance.
+in `debug.log`: it repeats itself per page and says nothing at a glance.
 
 ## Files shipped
 

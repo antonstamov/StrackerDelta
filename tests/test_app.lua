@@ -54,12 +54,14 @@ local env = {
   carSpeed = 180.0,
   serverName = 'SRV1',
   requests = {},
+  posts = {},           -- what went out in a body: url, body, content type
   windowOps = {},
   savedFiles = {},
   clicks = {},
   comboChoice = {},
   comboSeen = {},
   itemWidths = {},
+  rects = {},
   selectableAt = nil,
   selectableCalls = 0,
   rowClicks = {},
@@ -167,7 +169,7 @@ _G.ui = {
   end,
   sameLine = function() end,
   newLine = function() end,
-  separator = function() end,
+  separator = function() env.events[#env.events + 1] = 'separator' end,
   button = function(label)
     env.events[#env.events + 1] = 'button:' .. label
     if env.clicks[label] then env.clicks[label] = nil return true end
@@ -222,9 +224,12 @@ _G.ui = {
     return false
   end,
   itemHovered = function() return env.rowHovered == true end,
-  drawRectFilled = function(p1, p2)
+  drawRectFilled = function(p1, p2, color)
     -- a rule is a filled rect of less than two pixels: the separators
     if p2.y - p1.y < 2 then env.events[#env.events + 1] = 'rule' end
+    env.rects[#env.rects + 1] = {
+      x = p1.x, y = p1.y, w = p2.x - p1.x, h = p2.y - p1.y, color = color,
+    }
     env.lastRect = { x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y }
   end,
   drawLine = function() end,
@@ -363,38 +368,27 @@ _G.web = {
     env.requests[#env.requests + 1] = url
     if env.failNext then
       env.failNext = false
-      callback('connection refused', nil)
+      callback(env.failWithMessage or 'connection refused', nil)
       return
-    end
-    -- a client that refuses the long car list once, the way a game does, and takes
-    -- the shorter ones that follow
-    if env.failCarsRequest and url:find('cars=') then
-      env.failCarsRequest = nil
-      callback('url too long', nil)
-      return
-    end
-    -- car groups that do not go through: one of them, or all of them. The text the
-    -- game hands over comes in a system code page, not in utf-8
-    if url:find('cars=') and (env.failAllCarGroups or
-       (env.failCarsStartingWith and url:find(env.failCarsStartingWith, 1, true))) then
-      callback('\232\235\230\244\236\238 (code: 122)', nil)
-      return
-    end
-    -- a client that takes fewer cars per query than the app asks for
-    if env.maxCarsPerQuery and url:find('cars=') then
-      local list = url:match('cars=([^&]*)') or ''
-      -- the separators arrive encoded, that is what the app puts in the url
-      local encoded = select(2, list:gsub('%%2C', ''))
-      local plain = select(2, list:gsub(',', ''))
-      if 1 + encoded + plain > env.maxCarsPerQuery then
-        env.refusedCarQueries = (env.refusedCarQueries or 0) + 1
-        callback('url too long', nil)
-        return
-      end
     end
     local ok, err = pcall(callback, nil, { status = 200, body = bodyFor(url) })
     -- stracker.get swallows callback errors through pcall: they are caught here,
     -- otherwise they look like a network error and cannot be found at all
+    if not ok then env.callbackErrors[#env.callbackErrors + 1] = tostring(err) end
+  end,
+  -- the game takes a body as well. The fields of a form body reach the server the
+  -- same way the ones in a query string do, so the fixtures are matched on both.
+  post = function(url, headers, body, callback)
+    env.requests[#env.requests + 1] = url
+    env.posts[#env.posts + 1] = { url = url, body = body or '',
+                                   contentType = type(headers) == 'table' and headers['Content-Type'] }
+    if env.failNext or env.failPost then
+      env.failNext = false
+      env.failPost = false
+      callback(env.failWithMessage or 'connection refused', nil)
+      return
+    end
+    local ok, err = pcall(callback, nil, { status = 200, body = bodyFor(url .. '&' .. (body or '')) })
     if not ok then env.callbackErrors[#env.callbackErrors + 1] = tostring(err) end
   end,
 }
@@ -460,15 +454,33 @@ appScript.windowLaps()
 check('laps in track mode', #s.laps, 21)
 check('last request is lapstat', env.requests[#env.requests]:find('lapstat') ~= nil, true)
 
-local probedPlain, askedWithEveryCar, askedStatistics = false, false, false
+local probedPlain, askedStatistics = false, false
 for _, url in ipairs(env.requests) do
   if url:find('/statistics') then askedStatistics = true end
   if url:find('/lapstat%?track=') and not url:find('cars=') then probedPlain = true end
-  if url:find('cars=ac_car_alpha') and url:find('ac_car_beta') then askedWithEveryCar = true end
 end
 check('the plain track query came first', probedPlain, true)
-check('asked with the whole car list', askedWithEveryCar, true)
 check('statistics not needed', askedStatistics, false)
+
+-- 3b) the whole car list goes out in one request, and it goes out in the body:
+-- the same fields in a url are kilobytes long, and the game refuses to send a url
+-- that long. What the game makes of a body that long is only known in the game.
+local function countCars(text)
+  if not text then return 0 end
+  local encoded = select(2, text:gsub('%%2C', ''))
+  local plain = select(2, text:gsub(',', ''))
+  return 1 + encoded + plain
+end
+
+local query = env.posts[#env.posts]
+check('the track list went out as a post', query ~= nil, true)
+check('the post says what its body is',
+      query and query.contentType, 'application/x-www-form-urlencoded')
+checkNil('the url carries no car list', query and query.url:find('cars=', 1, true))
+check('the url stays the bare page', query and query.url:find('/lapstat$') ~= nil, true)
+check('the body carries the track',
+      query and query.body:find('track=rmi_nelson_ledges', 1, true) ~= nil, true)
+check('the body carries every car of the form', countCars(query and query.body) > 400, true)
 
 -- 4) picking a lap from the list (click on a row; the row id is the lapid now)
 env.selectableCalls = 0
@@ -592,7 +604,7 @@ end
 check('the error text is visible in Details', foundReason, true)
 
 -- Details collapses again on a click on the toggle
-env.selectableAt = env.selectableCalls + 1
+env.clicks[app.config.detailsOpen and '▾ Details' or '▸ Details'] = true
 appScript.windowLaps()
 check('Details collapses on click', app.config.detailsOpen, false)
 
@@ -618,7 +630,8 @@ appScript.windowLaps()
 local sawRetry, detailsAt, firstRowAt, detailAt, selectedAt = false, nil, nil, nil, nil
 for i, event in ipairs(env.events) do
   if event == 'button:Retry' then sawRetry = true end
-  if event:find('^selectable:.') and event:find('Details') and not detailsAt then detailsAt = i end
+  -- the diagnostics block is a button: it draws itself where the cursor is
+  if event:find('^button:') and event:find('Details') and not detailsAt then detailsAt = i end
   if event == 'text:delta text size' and not detailAt then detailAt = i end
   if event:sub(1, 13) == 'text:Selected' and not selectedAt then selectedAt = i end
   if event:sub(1, 4) == 'row:' and not firstRowAt then firstRowAt = i end
@@ -631,6 +644,27 @@ check('Details content right under the button',
 -- the list takes the remaining window height: the window size sets the table size
 check('list fills the remaining height', env.lastChildHeight, -10)
 check('one font in the table', #env.fonts, 0)
+
+-- a downloading row used to carry a yellow band, right next to the blue band of
+-- the selected row: the two stripes read as a flag and paired two rows that have
+-- nothing to do with each other. The time in yellow carries the same news.
+local downloading = s.laps[2]
+s.pendingLapid = downloading.lapid
+env.rects, env.texts = {}, {}
+appScript.windowLaps()
+local yellowRects = 0
+for _, rect in ipairs(env.rects) do
+  if rect.color == rgbm.colors.yellow then yellowRects = yellowRects + 1 end
+end
+check('a downloading row paints no band', yellowRects, 0)
+local timeIsYellow = false
+for _, item in ipairs(env.texts) do
+  if item.text == downloading.timeText and item.color == rgbm.colors.yellow then
+    timeIsYellow = true
+  end
+end
+check('the time of a downloading row is yellow', timeIsYellow, true)
+s.pendingLapid = nil
 
 -- 14) cell colours: only the time and the name in white, the rest grey
 env.texts = {}
@@ -911,9 +945,10 @@ check('the only address left is used', s.address, 'https://typed1.test')
 check('and remembered again', app.config.serverBindings:find('typed1%.test') ~= nil, true)
 
 -- ---------------------------------------------------------------------------
--- 20) This track: the lapstat page carries the whole car list, so the query goes
--- out with every car of it; the statistics page is the fallback for a page that
--- does not, and the plain result is kept whenever the long one does not work
+-- 20) This track: the lapstat page carries the whole car list, and the query goes
+-- out with every car of it in one request. The list is several kilobytes long,
+-- which is more than the game will put in a url, so it travels in the body of a
+-- post. The statistics page is the fallback for a page with no car list at all
 -- ---------------------------------------------------------------------------
 setAddresses(env.address)
 s.address = env.address
@@ -922,9 +957,17 @@ app.config.listServer = ''
 app.config.alwaysFastest = false
 s.autoLoaded = true          -- the reference lap is the business of other sections
 
-local function sawCarFilter()
+-- what the app asked with: the urls stay short, a car list lives in a body
+local function sawCarFilterInUrl()
   for _, url in ipairs(env.requests) do
     if url:find('cars=') then return true end
+  end
+  return false
+end
+
+local function sawCarFilterInBody()
+  for _, post in ipairs(env.posts) do
+    if post.body:find('cars=') then return true end
   end
   return false
 end
@@ -940,74 +983,93 @@ end
 env.noCarsInForm = true
 refreshNow()
 check('no car list: the statistics page is asked', sawStatistics(), true)
-check('no car list: asked with the cars it knows', sawCarFilter(), true)
+check('no car list: asked with the cars it knows', sawCarFilterInBody(), true)
 check('no car list: rows arrived anyway', #s.laps > 0, true)
 
--- 20b) the whole car list does not fit into one url: ask in parts and merge
+-- 20b) every car goes out in one request, and the url stays short: a url of that
+-- size is exactly what the game refuses to send
 env.noCarsInForm = nil
-env.failCarsRequest = true
+env.posts = {}
+env.requests = {}
 refreshNow()
-local partQueries = 0
-for _, url in ipairs(env.requests) do
-  if url:find('cars=ac_car') then partQueries = partQueries + 1 end
-end
-check('refused long url: the list was split', partQueries > 1, true)
-check('refused long url: rows arrived anyway', #s.laps > 0, true)
-check('refused long url: the report shows a car query', s.lastPath:find('cars=') ~= nil, true)
-env.failCarsRequest = nil
+check('the whole list went out in one request', #env.posts, 1)
+check('no url of the refresh carries a car list', sawCarFilterInUrl(), false)
+check('the rows arrived anyway', #s.laps > 0, true)
+check('the report names the query it sent', s.lastPath:find('cars=') ~= nil, true)
+check('the list was long enough to need a body',
+      countCars(env.posts[1] and env.posts[1].body) > 400, true)
 
 -- 20c) pages of one query can repeat a lap, the site shifts its order between
--- requests: the same lap must not turn into two rows
+-- requests: the same lap must not turn into two rows. Every page of the query
+-- carries the same car list, so every page is a post as well.
+env.posts = {}
 env.pageCount = 1
 refreshNow()
 local onePage = #s.laps
 
 env.pageCount = 2
 env.pageRepeats = true
+env.posts = {}
 refreshNow()
 local withRepeats = #s.laps
 
 env.pageRepeats = nil
+env.posts = {}
 refreshNow()
 local withDistinct = #s.laps
 
 check('a lap repeated on two pages is one row', withRepeats, onePage)
 check('two pages of different laps are both there', withDistinct, onePage * 2)
+check('both pages went out as posts', #env.posts, 2)
 env.pageCount = nil
 
--- 20d) one car group fails and the rest still arrive: a group is not the whole list
-env.failCarsStartingWith = 'ac_car_51'   -- the second group of the split list
+-- 20d) the post is refused: the text the game hands over is not utf-8, and it has
+-- to reach the screen readable, naming the query that died
+env.failPost = true
 refreshNow()
-check('a failing car group does not empty the list', #s.laps > 0, true)
-check('the failing group is not in the list', s.status:find('error') == nil, true)
-
--- 20e) a client that takes even less than a group: the group has to be asked in
--- halves until the answers come, not written off as too long
-env.failCarsStartingWith = nil
-env.maxCarsPerQuery = 6
-env.refusedCarQueries = 0
-env.requests = {}
-refreshNow()
-local askedWithHalves = 0
-for _, url in ipairs(env.requests) do
-  if url:find('cars=') then askedWithHalves = askedWithHalves + 1 end
-end
-check('the client refused a group', env.refusedCarQueries > 0, true)
-check('the list was asked in many small queries', askedWithHalves > 10, true)
-check('halving still delivers rows', #s.laps > 0, true)
-check('halving lost no group, so no group is reported lost', s.status:find('failed'), nil)
-env.maxCarsPerQuery = nil
-
--- 20f) every group fails: the error text the game hands over is not utf-8, and it
--- has to reach the screen as readable text that names the query that died
-env.failAllCarGroups = true
-refreshNow()
-check('all groups failing is an error', s.status:find('error') ~= nil, true)
-check('the status stays printable ascii', s.status:find('[^%32-\126]'), nil)
+check('a refused post is an error', s.status:find('error') ~= nil, true)
+check('the status stays printable ascii', s.status:find('[^%32-%126]'), nil)
 check('the failing query is shown in Details', s.lastPath:find('lapstat', 1, true) ~= nil, true)
-env.failAllCarGroups = nil
+env.failPost = nil
+refreshNow()
 
--- 20g) nothing anywhere: the status has to say why instead of guessing
+-- 20g) a game side error in the system code page says nothing on screen, but the
+-- number it carries does: that is a Windows web error and it means one thing
+env.failWithMessage = '\232\243\235 \243\244\239\230\232\240\245\240, (code: 12002)'
+env.failNext = true
+refreshNow()
+check('a timed out game error is named in words', s.status:find('timed out', 1, true) ~= nil, true)
+check('the code stays in the status', s.status:find('(code 12002)', 1, true) ~= nil, true)
+check('no question marks are left in the status', s.status:find('%%?%%') == nil, true)
+
+env.failWithMessage = '\232\243\235 \243\244\239\230\232\240\245\240 (code: 99999)'
+env.failNext = true
+refreshNow()
+check('an unknown code is reported as such', s.status:find('game web error 99999', 1, true) ~= nil, true)
+
+env.failWithMessage = '\232\243\235 \243\244\239\230\232\240\245\240'
+env.failNext = true
+refreshNow()
+check('an unreadable error without a code still says something',
+      s.status:find('could not reach the server', 1, true) ~= nil, true)
+
+env.failWithMessage = 'HTTP 404'
+env.failNext = true
+refreshNow()
+check('an ascii error is passed through as it is', s.status:find('HTTP 404', 1, true) ~= nil, true)
+env.failWithMessage = nil
+refreshNow()
+
+-- 20h) the same wording on the branch that loads a single lap
+env.failWithMessage = '\232\243\235 \243\244\239\230\232\240\245\240 (code: 12029)'
+env.failNext = true
+env.rowClicks['##lap' .. tostring(s.laps[1].lapid)] = true
+appScript.windowLaps()
+check('a lap download failure is named in words too',
+      s.status:find('could not connect', 1, true) ~= nil, true)
+env.failWithMessage = nil
+
+-- 20i) nothing anywhere: the status has to say why instead of guessing
 env.emptyWithCars = true
 env.emptyWithoutCars = true
 refreshNow()
@@ -1064,17 +1126,6 @@ check('the request is a description, not a url',
 check('the request does not print the long query',
       shownRequest ~= nil and shownRequest:find('cars=ac_car') == nil, true)
 
--- a list that had to be asked for in groups says how many queries it took
-env.failCarsRequest = true
-refreshNow()
-shownRequest = nil
-for _, item in ipairs(env.texts) do
-  if tostring(item.text):find('^lapstat') then shownRequest = tostring(item.text) end
-end
-check('a split list says how many car queries it took',
-      shownRequest ~= nil and shownRequest:find('car queries') ~= nil, true)
-env.failCarsRequest = nil
-
 -- the session scope is the one that filters by server, so the row is there
 app.config.listScope = 'session'
 app.config.listServer = 'SRV1'
@@ -1107,14 +1158,15 @@ check('the field follows the window, up to its minimum', narrow >= 240, true)
 env.windowWidth = 320
 
 -- the block ends before the filter: the filter belongs to the list, and the two
--- rows were touching without a rule between them
+-- rows were touching without a rule between them. The rule is a ui.separator(),
+-- drawn in the text stream, so it cannot land away from the rows around it.
 env.events = {}
 appScript.windowLaps()
 local referenceAt, filterAt, ruleBetween = nil, nil, false
 for index, event in ipairs(env.events) do
   if event == 'text:reference lap' then referenceAt = index end
   if event == 'text:Filter' and filterAt == nil then filterAt = index end
-  if event == 'rule' and referenceAt and filterAt == nil then ruleBetween = true end
+  if event == 'separator' and referenceAt and filterAt == nil then ruleBetween = true end
 end
 check('the block ends with a rule before the filter',
       referenceAt ~= nil and filterAt ~= nil and ruleBetween, true)
