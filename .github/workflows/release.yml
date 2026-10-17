@@ -106,6 +106,27 @@ jobs:
         run: |
           ls -l dist
 
+          # Whoever opens a release is here to install the app, and this page is
+          # the first place they land. The install goes above the generated notes,
+          # because the notes alone do not say what to do with the zip below.
+          # A link to the file is not used on purpose: the assets are listed right
+          # here, with a size and a checksum to compare against.
+          # The file name is the tag, so the text is written from it and cannot rot.
+          {
+            echo "## Installing this release"
+            echo
+            echo "1. Download \`Stracker Delta ${TAG}.zip\` from the **Assets** list below."
+            echo "2. Unpack it into \`Content Manager/apps/lua/\`, so that after unpacking"
+            echo "   there is \`apps/lua/StrackerDelta/StrackerDelta.lua\`."
+            echo "3. Enable **Stracker Delta** in Content Manager -> *Custom* -> *Apps*."
+            echo
+            echo "> **Code -> Download ZIP is the source code, not the app.** It has no"
+            echo "> package inside and will not run."
+            echo
+            echo "The address of your stracker server is set in the app, see the README."
+          } > notes.md
+          cat notes.md
+
           # This job has no checkout on purpose: the token that can write should not
           # sit next to a copy of the source. gh cannot guess the repository without
           # a git remote, so it is told which one to talk to.
@@ -118,6 +139,7 @@ jobs:
             out=$(gh release create "$TAG" dist/*.zip dist/SHA256SUMS \
               --repo "$REPO" \
               --title "$TAG" \
+              --notes "$(cat notes.md)" \
               --generate-notes 2>&1)
           fi
           status=$?
