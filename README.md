@@ -16,9 +16,6 @@ profile at the same point on the track.
    afterwards there must be `Content Manager\apps\lua\StrackerDelta\StrackerDelta.lua`.
    Unpacking the zip by hand into `apps\lua\` gives the same result.
 
-> **Code → Download ZIP is the source code, not the app.** There is no package inside
-> and it will not run: the app is only in the assets of a release.
-
 Then enable **Stracker Delta** in Content Manager → *Custom* → *Apps*, or in game in
 *Apps*. The app appears in the list as `Stracker Delta (lua)`.
 
@@ -253,6 +250,7 @@ StrackerDelta\
   scripts\           pack.cmd / pack.ps1, install.cmd / install.ps1
   tests\             offline test suite (needs pip install lupa)
   docs\              the screenshot at the top of this file
+  CHANGELOG.md       what changed in each version; the release page shows its section
   dist\              packages built by pack (not part of the sources)
 ```
 
