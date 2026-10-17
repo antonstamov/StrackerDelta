@@ -10,7 +10,7 @@ profile at the same point on the track.
 ## Install
 
 1. Open the [releases page](https://github.com/antonstamov/StrackerDelta/releases).
-2. Download the asset named `Stracker Delta v<version>.zip` from the **Assets** list at
+2. Download the asset named `Stracker.Delta.v<version>.zip` from the **Assets** list at
    the bottom of that page.
 3. Drag that archive into the Content Manager window. It unpacks and installs itself;
    afterwards there must be `Content Manager\apps\lua\StrackerDelta\StrackerDelta.lua`.
@@ -280,10 +280,14 @@ a release, and a built archive is not a source.
 scripts\pack.cmd
 ```
 
-Builds `dist\<NAME> v<VERSION>.zip` from `VERSION` and `NAME` in `manifest.ini`. Only the
-files listed above go in: no logs, no caches, no tests. Entries are named relative to the
-game folder with forward slashes, which is what Content Manager expects; the archive is
-written through the .NET zip API rather than `Compress-Archive` for that reason.
+Builds `dist\<NAME>.<VERSION>.zip` from `VERSION` and `NAME` in `manifest.ini`, spaces in
+`NAME` becoming dots: `Stracker.Delta.v0.1.1.zip`. The name is written this way because the
+release workflow carries the archive between jobs as an artifact and that trip rewrites
+spaces as dots, so a name with a space would reach the release page under a name the
+checksum file and the install steps never mention. Only the files listed above go in: no
+logs, no caches, no tests. Entries are named relative to the game folder with forward
+slashes, which is what Content Manager expects; the archive is written through the .NET
+zip API rather than `Compress-Archive` for that reason.
 
 **Install what you built:** `scripts\install.cmd` copies the same files into an Assetto
 Corsa folder.

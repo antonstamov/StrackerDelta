@@ -68,6 +68,14 @@ jobs:
           $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
           if (-not $zip) { throw "pack.cmd reported success but wrote nothing: $(Get-ChildItem dist | ForEach-Object { $_.Name })" }
 
+          # A space in the archive name does not survive the artifact round trip
+          # between the release jobs: it comes back with dots, under a name the
+          # checksum file and the install steps never mention. The build refuses it.
+          if ($zip.Name -match ' ') {
+            Write-Host "built '$($zip.Name)': the name must not contain a space" -ForegroundColor Red
+            exit 1
+          }
+
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $archive = [System.IO.Compression.ZipFile]::OpenRead($zip.FullName)
           try { $names = @($archive.Entries | ForEach-Object { $_.FullName }) } finally { $archive.Dispose() }

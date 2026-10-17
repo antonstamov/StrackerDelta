@@ -104,7 +104,12 @@ if ($notListed) {
     exit 1
 }
 
-$zipName = "$($about.NAME) v$($about.VERSION).zip"
+# Dots, not spaces. The release workflow carries the archive from the build job to
+# the job that publishes it as an artifact, and that round trip rewrites spaces in
+# file names as dots. A name with a space is therefore published under a name nobody
+# wrote, and the checksum file and the install steps on the release page go on
+# naming a file that is not there.
+$zipName = (($about.NAME -replace '[^A-Za-z0-9]', '.') + ".v$($about.VERSION).zip")
 $zipPath = Join-Path $distDir $zipName
 
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
