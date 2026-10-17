@@ -46,6 +46,7 @@ local config = ac.storage{
   refreshSeconds = 60,
   detailsOpen = false,     -- diagnostics block in the list window
   alwaysFastest = false,   -- always take the fastest lap of the list
+  hints = false,         -- field hints on hover, off until asked for
   textSizePx = 25,           -- delta text size in pixels (vector font)
   lastLapId = 0,           -- reference lap restored on the next start
 }
@@ -62,10 +63,10 @@ local state = {
   status = '',
   busy = false,
   refreshQueued = false,
+  addressRefusals = {},   -- addresses that just refused, and when
 
   page = 0,             -- kept for the future: the list is always fetched whole
   pages = 1,            -- how many pages the server has (diagnostics only)
-  listParts = nil,      -- how many car queries the list took, when it was split
   listToken = 0,        -- request counter: stale chains are dropped
   listVersion = 0,      -- grows with every new list, triggers the grid recalculation
   gridVersion = -1,     -- list version the column grid was computed for
@@ -110,12 +111,14 @@ local YELLOW = rgbm.colors.yellow
 local DIM = rgbm.colors.silver
 -- dimmed column text: DIM is already used by the table headers
 local SUBTLE = rgbm(0.60, 0.60, 0.60, 1)
-local ZEBRA = rgbm(1, 1, 1, 0.09)
+-- The stripes tell where one row ends and the next begins. They only started
+-- showing up once the rectangles were drawn in the right coordinate system, and
+-- at the alpha they were written with they fought the white text: the number
+-- that reads the table is the text, so the stripes stay as a hint and no more.
+local ZEBRA = rgbm(1, 1, 1, 0.04)
 local HOVER = rgbm(1, 1, 1, 0.07)
-local PENDING_BG = rgbm(1, 0.85, 0.30, 0.14)
 local TARGET_BG = rgbm(0.20, 0.30, 0.42, 0.55)
 local TARGET_BAR = rgbm(0.40, 0.72, 1.00, 1)
-local SEPARATOR = rgbm(1, 1, 1, 0.16)
 local ROW_ALPHA = 0.55
 
 -- status dot colour: YELLOW for anything in progress or worth noticing,
@@ -127,9 +130,18 @@ local PHASE_COLOR = {
   ready = DIM,
 }
 
+-- The status marker itself: U+2022 BULLET written as utf-8 bytes, because the
+-- Lua in Assetto Corsa is 5.1 and has no \u escapes.
+local STATUS_MARK = '\226\128\162'
+
 -- auto refresh intervals: the ones on screen are the ones we use
 local INTERVALS = { 30, 60, 120, 300 }
 local INTERVALS_LABEL = { '30s', '60s', '2m', '5m' }
+
+-- How long an address that has just refused us is left alone. The timer stops
+-- asking for a while; the Refresh button asks at once, because that is a person
+-- saying "try again", and editing the list forgets the refusal altogether.
+local ADDRESS_RETRY_AFTER = 120
 
 -- ---------------------------------------------------------------------------
 -- Cache of the last reference lap
@@ -166,6 +178,47 @@ local function plain(value)
   return text
 end
 
+-- The game hands its error text over in the system code page, where a Russian
+-- Windows says "не удалось подключиться" in bytes that cannot be drawn: on screen
+-- it was a row of question marks. The number behind "code:" is worth more than
+-- those words: it is the Windows web error, and it means the same thing in every
+-- language, so the message is built from it instead.
+local WEB_ERRORS = {
+  [122]   = 'the query was too long for the game',
+  [10060] = 'timed out',
+  [10061] = 'connection refused',
+  [12002] = 'timed out',
+  [12007] = 'connection reset',
+  [12029] = 'could not connect',
+  [12130] = 'connection refused',
+  [12152] = 'invalid server response',
+  [12156] = 'connection aborted',
+}
+
+--- What to tell about a failure, in words that can be drawn.
+local function reasonText(result)
+  local message = tostring((result and result.error) or 'no data')
+  local code = message:match('code:%s*(%d+)')
+
+  if code then
+    local known = WEB_ERRORS[tonumber(code)]
+    return plain(known or ('game web error ' .. code)) .. ' (code ' .. code .. ')'
+  end
+  -- no code: the game message is worth showing only when it is already ascii,
+  -- like the HTTP status this app writes itself
+  if message:find('^[\32-\126]+$') then return plain(message) end
+  return 'the game could not reach the server'
+end
+
+--- What to tell when an address does not answer as a stracker site. The site
+--- serves its own main page for any path it does not know, so the answer is the
+--- only thing that can say whether an address is the site: "HTTP 500" on its own
+--- says nothing to a person who only typed a wrong link. The address itself is not
+--- repeated here, it is right above in the field.
+local function siteError(result)
+  return 'that address does not answer as a stracker site (' .. reasonText(result) .. ')'
+end
+
 --- Which request a failure belongs to. The path is what tells one query from
 --- another, the length is what tells a refused long url from a bad track name.
 local function urlHint(url)
@@ -177,7 +230,7 @@ end
 
 --- A failure in a form that is safe to show and safe to log.
 local function errorText(result)
-  return plain((result and result.error) or 'no data') .. urlHint(result and result.url)
+  return reasonText(result) .. urlHint(result and result.url)
 end
 
 local function saveLapCache(key, meta, positions, speeds, times)
@@ -421,7 +474,7 @@ end
 
 --- reasonOverride says why, when the automatic reason would be wrong: a pick by
 --- hand goes through the same flow but has to keep its own explanation.
-local function refresh(reasonOverride)
+local function refresh(reasonOverride, manual)
 
   if state.busy then state.refreshQueued = true return end
 
@@ -442,13 +495,27 @@ local function refresh(reasonOverride)
     -- the server list of that address is needed for detection and for the dropdown
     local servers = stracker.serversAt(address)
     if not servers or #servers == 0 then
+      -- An address that has just refused us is asked again by hand, but not by the
+      -- timer: a list that cannot work would otherwise be asked for once a minute
+      -- for the whole session, and the status would sit on "detecting" between
+      -- the attempts instead of saying what is wrong.
+      local refused = state.addressRefusals[address]
+      if refused and not manual and state.clock - refused.at < ADDRESS_RETRY_AFTER then
+        state.busy = false
+        state.status = refused.status
+        return
+      end
+
       state.status = 'detecting servers...'
       stracker.fetchServers(address, function(result)
         state.busy = false
         if result.ok and result.servers and #result.servers > 0 then
+          state.addressRefusals[address] = nil
           requestLaps(address)
         else
-          state.status = 'error: ' .. plain(result.error or 'no data')
+          local status = 'error: ' .. siteError(result)
+          state.addressRefusals[address] = { status = status, at = state.clock }
+          state.status = status
           debugLog('fetchServers failed: ' .. errorText(result))
         end
       end)
@@ -538,7 +605,7 @@ requestLaps = function(address)
     state.lastRequestRaw = not result.ok
     if result.silent then return end
     if not result.ok then
-      state.status = 'error: ' .. plain(result.error)
+      state.status = 'error: ' .. reasonText(result)
       config.detailsOpen = true   -- on error the reason has to be visible right away
       debugLog('listLaps failed: ' .. errorText(result))
       if state.refreshQueued then
@@ -551,25 +618,16 @@ requestLaps = function(address)
     state.laps = result.rows
     state.listVersion = state.listVersion + 1
     state.pages = result.pager and result.pager.pages or 1
-    state.listParts = result.parts       -- car queries, when the list was split
     local ok, stamp = pcall(os.date, '%H:%M:%S')
     state.updatedAt = ok and stamp or nil
     if #result.rows == 0 then
       -- result.note says why: no cars known, nothing recorded, and so on
       state.status = result.note or 'no laps for this combination - try another entry'
     else
-      state.status = 'laps: ' .. #result.rows ..
-        (result.failedParts and
-          (' - ' .. tostring(result.failedParts) .. ' car groups failed') or '')
+      state.status = 'laps: ' .. #result.rows
     end
     debugLog('list: ' .. tostring(#result.rows) .. ' laps' ..
              (state.pages > 1 and (', ' .. tostring(state.pages) .. ' pages merged') or '') ..
-             (result.parts and (', ' .. tostring(result.parts) ..
-              ' car queries, the whole list did not fit into one url') or '') ..
-             (result.refusedParts and (', ' .. tostring(result.refusedParts) ..
-              ' of them refused and asked smaller') or '') ..
-             (result.failedParts and (', ' .. tostring(result.failedParts) ..
-              ' groups lost') or '') ..
              ', ' .. tostring(result.path))
 
     -- reference lap: the "always fastest" checkbox wins over the manual pick
@@ -629,7 +687,7 @@ loadLap = function(row, force)
     state.busy = false
     state.pendingLapid = nil
     if not result.ok then
-      state.status = 'error: ' .. plain(result.error)
+      state.status = 'error: ' .. reasonText(result)
       config.detailsOpen = true   -- on error the reason has to be visible right away
       log('fetchLap failed: ' .. errorText(result))
       return
@@ -641,10 +699,6 @@ loadLap = function(row, force)
     state.status = 'loaded ' .. tostring(info.lapTimeText) .. ' - ' .. tostring(info.driver)
     config.lastLapId = info.lapid or row.lapid or 0
     saveLapCache(listCacheKey(), info, positions, speeds, times)
-
-    -- the whole profile is saved next to the app: it can be opened
-    -- and compared with the reference by hand
-    pcall(io.save, 'apps/lua/StrackerDelta/last_lap.csv', lap.toCsv(positions, speeds, times))
 
     log('lap loaded: ' .. tostring(info.lapid) .. ' ' .. tostring(info.lapTimeText) ..
         ' ' .. tostring(info.driver) .. ' ' .. tostring(info.track) ..
@@ -723,6 +777,12 @@ local WINDOW_DRIVE = 'drive'
 local DWRITE_FONT = 'DeltaUI:content/fonts/segoeuib.ttf'
 local BTN_BG = rgbm(0.16, 0.16, 0.16, 0.85)
 local BTN_BG_HOVER = rgbm(0.34, 0.34, 0.34, 0.95)
+
+-- the field hints button when they are on: a painted frame reads as "active" in a
+-- way a word next to it would not, and the toolbar does not need another word in it
+local HINTS_ON_BG = rgbm(0.34, 0.09, 0.09, 0.95)
+local HINTS_ON_BG_HOVER = rgbm(0.48, 0.13, 0.13, 1.00)
+local HINTS_ON_FG = rgbm(1.00, 0.74, 0.74, 1.00)
 
 local function paintText(str, color, size, x, y)
   ui.pushDWriteFont(DWRITE_FONT)
@@ -983,9 +1043,12 @@ local function drawStatus(matchInfo)
   end
   local color = PHASE_COLOR[phase]
 
+  -- The marker is a character in the text stream rather than a filled rectangle:
+  -- ui.drawRectFilled() and ui.cursorScreenPos() do not agree with each other in
+  -- this build, and the rectangle landed somewhere else on the screen as soon as
+  -- the window was moved. Text and widgets always stay where the cursor is.
   local startX, startY = ui.getCursorX(), ui.getCursorY()
-  local dot = ui.cursorScreenPos()
-  ui.drawRectFilled(dot, dot + vec2(6, 6), color)
+  ui.textColored(STATUS_MARK, color)
 
   ui.setCursorX(startX + 13)
   ui.setCursorY(startY)
@@ -1024,12 +1087,11 @@ local function detailRow(label, value, color, tail)
 end
 
 --- A thin line between what can be changed and what it produced.
+--- ui.separator() draws itself in the text stream, so it cannot drift away
+--- from the rows it belongs to the way an absolute rectangle did.
 local function drawDetailsSeparator()
   ui.newLine()
-  local from = ui.cursorScreenPos()
-  from.y = from.y + math.floor(ui.fontSize() / 2)
-  ui.drawRectFilled(from, from + vec2(fieldWidth() + VALUE_COLUMN - VALUE_MARGIN, 1),
-                    SEPARATOR)
+  ui.separator()
   ui.newLine()
 end
 
@@ -1064,29 +1126,84 @@ local function requestSummary()
     end
   end
 
-  -- a list that had to be asked for in groups says how many queries it took
-  if state.listParts and state.listParts > 1 then
-    parts[#parts + 1] = tostring(state.listParts) .. ' car queries'
-  elseif state.pages > 1 then
+  -- a list the site paginates says how many pages had to be walked
+if state.pages > 1 then
     parts[#parts + 1] = tostring(state.pages) .. ' pages'
   end
   return table.concat(parts, '  ·  ')
 end
 
---- Diagnostics block button. A plain selectable with bare text blends into
---- the checkbox next to it, so a backdrop and an arrow are drawn instead.
+--- Tooltip for the control that was just drawn.
+--- The game shows it while the mouse is over that control. What goes in it is
+--- what cannot be guessed from the label: what to type, what the switch changes,
+--- which of several things a list is. One line or several.
+--- Must be called right after the control, while it is still the last one drawn.
+--- Hints are off until the user asks for them: useful once in a while, in the way
+--- the rest of the time. always is for the control that turns them on, which
+--- cannot explain itself otherwise.
+local function tooltip(text, always)
+  if not always and not config.hints then return end
+  if not ui.itemHovered() then return end
+  ui.tooltip(function()
+    if type(text) == 'table' then
+      for _, line in ipairs(text) do ui.text(line) end
+    else
+      ui.text(text)
+    end
+  end)
+end
+
+--- Field hints on and off, next to the diagnostics block.
+---
+--- The state is in the button itself: when the hints are on its frame is painted
+--- red, which is the only thing about a button that says "this is on" without adding
+--- a word next to it. The colour goes in through StyleColor.Button, which is what
+--- the game draws a button frame from; FrameBg is not what it uses, and pushing
+--- that one leaves the button looking the same either way.
+local function drawHintsToggle()
+  local on = config.hints and true or false
+
+  if on then
+    ui.pushStyleColor(ui.StyleColor.Button, HINTS_ON_BG)
+    ui.pushStyleColor(ui.StyleColor.ButtonHovered, HINTS_ON_BG_HOVER)
+    ui.pushStyleColor(ui.StyleColor.ButtonActive, HINTS_ON_BG_HOVER)
+    ui.pushStyleColor(ui.StyleColor.Text, HINTS_ON_FG)
+  end
+
+  -- sized by the game, for the same reason as the Details button next to it
+  if ui.button('?') then
+    config.hints = not on
+    debugLog('field hints: ' .. tostring(config.hints))
+  end
+
+  if on then
+    ui.popStyleColor()
+    ui.popStyleColor()
+    ui.popStyleColor()
+    ui.popStyleColor()
+  end
+
+  tooltip(on and 'Field hints are on: what a field is for. Click to hide them.'
+                or 'Field hints are off. Click to show what a field is for.', true)
+end
+
+--- Diagnostics block button. A plain selectable with bare text blends into the
+--- checkbox next to it, so this is a real button with a frame: it draws itself
+--- where the cursor is and needs no coordinates of its own.
+--- Diagnostics block button. A plain selectable with bare text blends into the
+--- checkbox next to it, so this is a real button with a frame: it draws itself
+--- where the cursor is and needs no coordinates of its own.
+---
+--- No size of its own: the game sizes a button with its own padding around the
+--- text, and a height worked out here is always a couple of pixels short of that,
+--- which shows as a frame cut off along the bottom edge.
 local function drawDetailsToggle()
-  local label = config.detailsOpen and '▾ Details' or '▸ Details'
-  local textWidth = ui.measureText(label).x
-  local height = ui.fontSize() + 4
-  local width = textWidth + 20
-  local top = ui.cursorScreenPos()
-
-  ui.drawRectFilled(top, top + vec2(width, height), BTN_BG)
-
-  if ui.selectable(label, false, ui.SelectableFlags.None, vec2(width, height)) then
+  -- no marker in front of the word: the block below is what says whether it is
+  -- open, and the game does not draw one for us anyway
+  if ui.button('Details') then
     config.detailsOpen = not config.detailsOpen
   end
+  tooltip('What the app asked for, what the server sent back, and what it made of it.')
 end
 
 --- The address list and the manual choice.
@@ -1103,6 +1220,13 @@ local function drawAddressEditor(configured)
   -- a fixed width that cut the second address in half
   ui.setNextItemWidth(fieldWidth())
   local edited = ui.inputText('##addresses', state.addressText)
+  tooltip({
+    'Address of the stracker site, the root only:',
+    'https://stracker.example.com',
+    'A page of that site is not an address: drop everything from',
+    '/lapstat, /statistics or /lapdetails on, and the ?... after it.',
+    'Several sites: separate them with a comma.',
+  })
 
   if edited ~= state.addressText then
     local list = addresses.parseList(edited)
@@ -1112,6 +1236,8 @@ local function drawAddressEditor(configured)
     config.serverBindings = addresses.serializeBindings(
       addresses.forgetRemoved(addresses.parseBindings(config.serverBindings), list))
     stracker.dropAll()
+    -- what the list used to say about an address says nothing about the new one
+    state.addressRefusals = {}
   end
 
   local problems = select(2, addresses.parseList(state.addressText))
@@ -1139,6 +1265,10 @@ local function drawAddressEditor(configured)
   -- takes it into use at once. There is no separate button, because a selection that
   -- only lives inside the widget would be back to the old value on the next frame.
   local picked = ui.combo('##addressPick', active, ui.ComboFlags.None, configured)
+  tooltip({
+    'Which of the addresses above this AC server uses.',
+    'The choice is remembered, so the next session starts with it.',
+  })
   if picked and picked ~= active and configured[picked] then
     useAddress(acServerName(), configured[picked], 'by hand')
     refresh('by hand')
@@ -1177,12 +1307,14 @@ local function drawDetailsBody()
   if ui.button('-##sizeDown') then
     config.textSizePx = math.max(12, config.textSizePx - 1)
   end
+  tooltip('Size of the delta text drawn on top of the game, in pixels.')
   ui.sameLine()
   ui.textColored(tostring(config.textSizePx) .. ' px', WHITE)
   ui.sameLine()
   if ui.button('+##sizeUp') then
     config.textSizePx = math.min(64, config.textSizePx + 1)
   end
+  tooltip('Size of the delta text drawn on top of the game, in pixels.')
 
   drawAddressEditor(addresses.parseList(state.addressText))
   drawDetailsSeparator()
@@ -1285,6 +1417,12 @@ local function drawLaps()
   ui.setNextItemWidth(220)
   local current = selectedChoice(choices)
   local picked = ui.combo('##list', current, ui.ComboFlags.None, labels)
+  tooltip({
+    'What the list is loaded from:',
+    'Session - the laps of the AC server you are on',
+    'This track - every car on the track you are on',
+    'Track + car - your car on this track',
+  })
   if picked and picked ~= current then
     local choice = choices[picked]
     if choice then
@@ -1297,13 +1435,15 @@ local function drawLaps()
   end
   ui.sameLine()
 
-  if ui.button('Refresh') then refresh() end
+  if ui.button('Refresh') then refresh(nil, true) end
+  tooltip('Ask the server again, now.')
   ui.sameLine()
   if ui.checkbox('Auto', config.autoRefresh) then
     config.autoRefresh = not config.autoRefresh
     state.lastRequest = state.clock
     debugLog('auto refresh: ' .. tostring(config.autoRefresh))
   end
+  tooltip('Reload the list on a timer, without asking for it.')
   ui.sameLine()
 
   local intervalIndex = 1
@@ -1312,6 +1452,7 @@ local function drawLaps()
   end
   ui.setNextItemWidth(62)
   local pickedInterval = ui.combo('##interval', intervalIndex, ui.ComboFlags.None, INTERVALS_LABEL)
+  tooltip('How often the list reloads itself while Auto is on.')
   if pickedInterval and pickedInterval ~= intervalIndex then
     config.refreshSeconds = INTERVALS[pickedInterval]
     state.lastRequest = state.clock
@@ -1323,10 +1464,16 @@ local function drawLaps()
     debugLog('always fastest: ' .. tostring(config.alwaysFastest))
     if config.alwaysFastest then refresh() end
   end
+  tooltip({
+    'Always take the fastest lap of the list as the reference.',
+    'Off: the lap that is loaded stays the reference.',
+  })
   ui.sameLine(0, 10)
 
   -- the diagnostics block is drawn as a button: plain text blends into the checkbox
   drawDetailsToggle()
+  ui.sameLine()
+  drawHintsToggle()
   ui.newLine()
 
   -- the block opens right below the button and pushes the rest down
@@ -1340,6 +1487,7 @@ local function drawLaps()
   ui.sameLine()
   ui.setNextItemWidth(240)
   state.filter = ui.inputText('##filter', state.filter)
+  tooltip('Show only the rows that match: a driver, a car, a time, anything in a row.')
   ui.newLine()
 
   local rows = filteredRows()
@@ -1399,7 +1547,10 @@ local function drawLaps()
     local rowY = gridY + (index - 1) * rowHeight
     ui.setCursorX(gridX)
     ui.setCursorY(rowY)
-    local top = ui.cursorScreenPos()
+    -- The tints are drawn with the coordinates of the row itself: in this build
+    -- ui.cursorScreenPos() and ui.drawRectFilled() disagreed, and the rectangles
+    -- showed up somewhere else on the screen once the window was moved.
+    local top = vec2(gridX, rowY)
 
     -- the button first: only it gives an honest hover and click
     local clicked = ui.invisibleButton('##lap' .. tostring(row.lapid), vec2(listWidth, rowHeight))
@@ -1408,9 +1559,7 @@ local function drawLaps()
     local isTarget = row.lapid == (meta and meta.lapid)
     local isPending = state.pendingLapid ~= nil and row.lapid == state.pendingLapid
 
-    if isPending then
-      ui.drawRectFilled(top, top + vec2(listWidth, rowHeight), PENDING_BG)
-    elseif isTarget then
+    if isTarget then
       ui.drawRectFilled(top, top + vec2(listWidth, rowHeight), TARGET_BG)
     elseif index % 2 == 0 then
       ui.drawRectFilled(top, top + vec2(listWidth, rowHeight), ZEBRA)
@@ -1428,6 +1577,11 @@ local function drawLaps()
     if isTarget then
       cellColors = { WHITE, WHITE, SUBTLE, WHITE, SUBTLE, SUBTLE, SUBTLE, SUBTLE, SUBTLE }
     end
+    -- A row that is downloading used to carry a yellow band. Next to the blue
+    -- band of the selected row the two read as a flag, and the pairing said
+    -- nothing: the loading lap is not the selected lap. The time in yellow says
+    -- the same thing without a second stripe.
+    if isPending then cellColors[2] = YELLOW end
     for i, text in ipairs(cells) do
       ui.setCursorX(gridX + offsets[i])
       ui.setCursorY(rowY)

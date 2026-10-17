@@ -262,6 +262,38 @@ checkNil('empty is refused', addresses.normalise('   '))
 checkNil('nonsense is refused', addresses.normalise('not an address'))
 checkNil('ftp is refused', addresses.normalise('ftp://a.example'))
 
+-- a page of the site is what lands in the field when the address bar was copied.
+-- It has to be refused with a reason that says what an address is, and a stracker
+-- in a folder has to survive it: only the pages of the site are refused by name
+local pageUrl = 'https://a.example/lapstat?currservers=SRV1'
+local pageAddress, pageReason = addresses.normalise(pageUrl)
+checkNil('a lapstat page is not an address', pageAddress)
+check('and the reason says so', pageReason, 'a page of the site, not its address')
+checkNil('the lapdetails page as well',
+         addresses.normalise('https://a.example/lapdetails?lapid=469554'))
+checkNil('the statistics page as well', addresses.normalise('https://a.example/statistics'))
+checkNil('the main page as well', addresses.normalise('https://a.example/mainpage'))
+checkNil('and the pages the app never asks for', addresses.normalise('https://a.example/livemap'))
+checkNil('a query on the root is a page with a filter on',
+         addresses.normalise('https://a.example/?currservers=SRV1'))
+checkNil('a query on a folder is too', addresses.normalise('https://a.example/stracker?x=1'))
+checkNil('a page name is refused whatever its case',
+         addresses.normalise('https://a.example/LapStat?currservers=SRV1'))
+checkNil('and with a trailing slash', addresses.normalise('https://a.example/lapstat/'))
+check('a stracker in a folder stays valid',
+      addresses.normalise('https://a.example/stracker'), 'https://a.example/stracker')
+check('another path stays valid too',
+      addresses.normalise('https://a.example/lap'), 'https://a.example/lap')
+check('a host that looks like one is still not', addresses.normalise('lapstat.example.com'),
+      'https://lapstat.example.com')
+
+-- the reason reaches the field as the line that says what was skipped
+local pageProblems = select(2, addresses.parseList(pageUrl))
+check('a page in the list is reported', #pageProblems, 1)
+check('with the reason in it', pageProblems[1]:find('a page of the site', 1, true) ~= nil, true)
+check('and with what was typed', pageProblems[1]:find('currservers', 1, true) ~= nil, true)
+check('a list of one page address is no address', #addresses.parseList(pageUrl), 0)
+
 local two = addresses.parseList('https://a.example, https://b.example')
 check('two addresses parsed', #two, 2)
 check('first one', two[1], 'https://a.example')
@@ -357,7 +389,9 @@ check('a row without a time is last', withGap[2].pos, 2)
 
 -- ---------------------------------------------------------------------------
 heading('CSV')
-local csv = lap.toCsv(positions, speeds, times)
+-- the one CSV the app writes: the profile cache, at full precision. The reference
+-- file in reference/ holds the same profile and is compared line by line.
+local csv = lap.toCache(positions, speeds, times)
 local handle = io.open(outDir .. '/lua_data.csv', 'wb')
 handle:write(csv)
 handle:close()

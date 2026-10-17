@@ -12,16 +12,6 @@ local M = {}
 
 M.MODES = { 'session', 'track', 'track_car' }
 
--- how many cars go into one query when the whole list does not fit into a url
-M.CARS_PER_QUERY = 50
-
--- A group that is refused is asked again in halves until it is this small, and
--- until this many queries have gone out. Halving is how the limit of a client is
--- found out; the budget is what keeps a server that refuses everything from
--- turning one refresh into hundreds of requests.
-M.MIN_CARS_PER_QUERY = 5
-M.CARS_QUERY_BUDGET = 120
-
 -- The server list and the track list belong to an address, not to the module:
 -- two configured addresses know different servers, so the cache is per address.
 local caches = {}
@@ -72,18 +62,31 @@ end
 -- Page URLs
 -- ---------------------------------------------------------------------------
 
---- /lapstat URL. The server is sent only for the "session" scope:
---- the track and track+car scopes cover every server (offline hotlapping).
---- page is zero based, so &page=1 is the second page; the first page
---- does not need the parameter at all.
-function M.lapstatPath(server, track, cars, page)
+--- The fields of one lapstat query, as name=value pairs. The same fields go into
+--- the url of a get and into the body of a post: the site reads a form either way.
+local function lapstatFields(server, track, cars, page)
   local parts = {}
   if server and server ~= '' then parts[#parts + 1] = 'currservers=' .. encode(server) end
   if track and track ~= '' then parts[#parts + 1] = 'track=' .. encode(track) end
   if cars and cars ~= '' then parts[#parts + 1] = 'cars=' .. encode(cars) end
   if page and page > 0 then parts[#parts + 1] = 'page=' .. tostring(page) end
+  return parts
+end
+
+--- /lapstat URL. The server is sent only for the "session" scope:
+--- the track and track+car scopes cover every server (offline hotlapping).
+--- page is zero based, so &page=1 is the second page; the first page
+--- does not need the parameter at all.
+function M.lapstatPath(server, track, cars, page)
+  local parts = lapstatFields(server, track, cars, page)
   if #parts == 0 then return 'lapstat' end
   return 'lapstat?' .. table.concat(parts, '&')
+end
+
+--- The same query as a form body, for a post: everything goes into the body and
+--- the url stays the bare name of the page.
+function M.lapstatForm(server, track, cars, page)
+  return table.concat(lapstatFields(server, track, cars, page), '&')
 end
 
 function M.statisticsPath(track)
@@ -156,7 +159,13 @@ function M.listLaps(options, deliver)
     return callback({ ok = false, error = 'server not determined' })
   end
 
-  local function lapstatAll(trackFilter, cars, done)
+  -- Asks for a list and for the pages after it.
+  --
+  -- inBody sends the filters in the body of a post instead of in the url. That is
+  -- how a list of every car the site knows gets out in one request: the same
+  -- fields in a url are several kilobytes long, and the game refuses to send a
+  -- url that long, while a body of that size it carries without trouble.
+  local function lapstatAll(trackFilter, cars, inBody, done)
     local rows = {}
     local seen = {}
     local path = nil
@@ -167,8 +176,11 @@ function M.listLaps(options, deliver)
         return done({ ok = false, error = 'cancelled', silent = true })
       end
 
+      -- the path names the query for the app: it is what went out, or what went
+      -- into the body, whichever the transport was
       path = M.lapstatPath(server, trackFilter, cars, page)
-      get(address, path, function(response)
+
+      local function answer(response)
         if not response.ok then return done(response) end
 
         -- pages of one query overlap: the site shifts the order under us, so the
@@ -193,94 +205,35 @@ function M.listLaps(options, deliver)
         cache.servers = cache.servers or html.parseServers(response.body)
         cache.tracks = cache.tracks or html.parseTracks(response.body)
         done({ ok = true, rows = rows, pager = lastPager, path = path })
-      end)
+      end
+
+      if inBody then
+        web.post(address .. '/lapstat',
+                 M.lapstatForm(server, trackFilter, cars, page), answer)
+      else
+        get(address, path, answer)
+      end
     end
 
     step(0)
   end
 
-  -- A track query with every car in it has a url of several kilobytes. A client
-  -- that refuses a url that long gets the list in parts instead, and the rows of
-  -- all of them are merged.
-  local function chunk(list, size)
-    local parts, current = {}, {}
-    for _, item in ipairs(list) do
-      current[#current + 1] = item
-      if #current >= size then
-        parts[#parts + 1] = current
-        current = {}
-      end
-    end
-    if #current > 0 then parts[#parts + 1] = current end
-    return parts
-  end
-
-  local function slice(list, from, to)
-    local out = {}
-    for index = from, to do out[#out + 1] = list[index] end
-    return out
-  end
-
-  -- Asks the groups of the queue one after the other and merges what comes back.
-  --
-  -- A group that does not go through is not the end of the list: it is asked again
-  -- in halves, because how long a url a client takes is not known here and halving
-  -- finds out. What is left of a group after the budget is used up is given up on
-  -- and counted, so the app can say the list is not complete.
-  local function lapstatInParts(track, queue, acc, done)
-    local part = queue[1]
-    if not part then
-      if #acc.rows == 0 and acc.error then return done(acc.error) end
-      local result = { ok = true, rows = acc.rows, path = acc.path, parts = acc.asked }
-      if acc.failed > 0 then result.failedParts = acc.failed end
-      if acc.refused > 0 then result.refusedParts = acc.refused end
-      return done(result)
-    end
-    table.remove(queue, 1)
-
-    acc.asked = acc.asked + 1
-    if options.onPage then options.onPage(acc.asked, acc.asked + #queue) end
-
-    lapstatAll(track, table.concat(part, ','), function(result)
-      if not result.ok then
-        acc.refused = acc.refused + 1
-        acc.error = acc.error or result
-        if #part > M.MIN_CARS_PER_QUERY and acc.asked < M.CARS_QUERY_BUDGET then
-          local half = math.floor(#part / 2)
-          table.insert(queue, 1, slice(part, half + 1, #part))
-          table.insert(queue, 1, slice(part, 1, half))
-        else
-          -- nothing smaller left to try: this piece of the list is missing, and
-          -- the app has to say the list is not the whole thing
-          acc.failed = acc.failed + 1
-        end
-        return lapstatInParts(track, queue, acc, done)
-      end
-
-      for _, row in ipairs(result.rows) do
-        if not acc.seen[row.lapid] then
-          acc.seen[row.lapid] = true
-          acc.rows[#acc.rows + 1] = row
-        end
-      end
-      acc.path = result.path
-
-      lapstatInParts(track, queue, acc, done)
-    end)
-  end
-
   if options.mode == 'track_car' then
-    lapstatAll(options.track, options.car, callback)
+    lapstatAll(options.track, options.car, false, callback)
   elseif options.mode == 'track' then
     -- "every car that drove this track".
     --
     -- A lapstat page filtered by track carries the complete car list in its form,
-    -- and asked with all of it the site answers with every car that drove the track.
-    -- So the first request is the plain one: it gives both the page to fall back on
-    -- and the list to ask properly with. Only when that list is missing does the
+    -- and asked with all of it the site answers with every car that drove the
+    -- track. That list is several kilobytes long, so it goes into the body of a
+    -- post: the game refuses to send a url of that size and carries a body of it
+    -- without complaint. One request covers every car the site knows.
+    --
+    -- The plain page is still asked first: it is the page to fall back on, and it
+    -- is where the car list comes from. Only when that list is missing does the
     -- /statistics page come in, because it knows cars but is filled in for some
     -- tracks only. Whatever happens, the plain result is never thrown away for
-    -- nothing: a server that refuses the long car list still leaves us the rows it
+    -- nothing: a server that refuses the query still leaves us the rows it
     -- returned on its own.
     local track = options.track
 
@@ -306,32 +259,21 @@ function M.listLaps(options, deliver)
           if not entry or #entry.cars == 0 then
             return keepPlain('no laps recorded on this track')
           end
-          lapstatAll(track, table.concat(entry.cars, ','), function(result)
+          lapstatAll(track, table.concat(entry.cars, ','), true, function(result)
             if result.ok and #result.rows == 0 then return keepPlain('no laps recorded on this track') end
             callback(result)
           end)
         end)
       end
 
-      lapstatAll(track, table.concat(cars, ','), function(result)
-        if not result.ok then
-          -- the whole list did not fit into one url: ask in parts and merge
-          return lapstatInParts(track, chunk(cars, M.CARS_PER_QUERY),
-                                { rows = {}, seen = {}, failed = 0, refused = 0,
-                                  asked = 0, error = nil, path = nil },
-                                function(merged)
-            if merged.ok and #merged.rows == 0 then
-              return keepPlain('no laps recorded on this track')
-            end
-            callback(merged)
-          end)
-        end
+      lapstatAll(track, table.concat(cars, ','), true, function(result)
+        if not result.ok then return callback(result) end
         if #result.rows == 0 then return keepPlain('no laps recorded on this track') end
         callback(result)
       end)
     end)
   else
-    lapstatAll(nil, nil, callback)
+    lapstatAll(nil, nil, false, callback)
   end
 end
 
@@ -360,6 +302,7 @@ function M.fetchServers(address, callback)
     callback({ ok = true, servers = cache.servers, tracks = cache.tracks })
   end)
 end
+
 
 -- ---------------------------------------------------------------------------
 -- Server and track matching

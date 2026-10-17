@@ -1,7 +1,7 @@
 -- Stracker Delta: the lap model.
 -- Builds a lap out of the chart points of /lapdetails: positions, speeds and
 -- the time spent per point. Interpolates that profile at any position of the
--- track and formats lap times, deltas and the CSV export.
+-- track and formats lap times, deltas and the profile CSV.
 
 local M = {}
 
@@ -111,23 +111,6 @@ end
 -- Formatting
 -- ---------------------------------------------------------------------------
 
---- "0.0200000000" -> "0.02" (%.10f with the zeros cut off)
-function M.formatPosition(value)
-  local s = string.format('%.10f', value)
-  s = s:gsub('0+$', '')
-  s = s:gsub('%.$', '')
-  if s == '-0' then s = '0' end
-  return s
-end
-
---- 179 -> "179.0", 187.04 -> "187.04" (shortest repr that keeps the number)
-function M.formatSpeed(value)
-  if value == math.floor(value) and math.abs(value) < 1e15 then
-    return string.format('%.1f', value)
-  end
-  return (string.format('%.14g', value))
-end
-
 --- Seconds -> "01:18.149"
 function M.formatLapTime(seconds)
   if not seconds then return '--:--.---' end
@@ -156,21 +139,10 @@ function M.formatSpeedDelta(value)
   return string.format('%.1f', value)
 end
 
---- CSV of the format the tooling around this app has always used
-function M.toCsv(positions, speeds, times)
-  local lines = { 'Position,Speed,Time' }
-  for i = 1, #positions do
-    lines[#lines + 1] = table.concat({
-      M.formatPosition(positions[i]),
-      M.formatSpeed(speeds[i]),
-      string.format('%.2f', times[i]),
-    }, ',')
-  end
-  return table.concat(lines, '\n') .. '\n'
-end
-
---- Profile cache: same CSV but more precise (0.1 ms per time sample),
---- so that the cached profile matches the one that came from the network.
+--- Profile cache as CSV: Position,Speed,Time with the full precision the network
+--- sent (0.1 ms per time sample), so that the cached profile matches the one that
+--- came in. It is the one and only copy of the profile on disk, and it opens in a
+--- spreadsheet as it is.
 function M.toCache(positions, speeds, times)
   local lines = { 'Position,Speed,Time' }
   for i = 1, #positions do

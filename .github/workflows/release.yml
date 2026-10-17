@@ -74,6 +74,43 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256).Hash.ToLower()
           "$hash  $($zip.Name)" | Set-Content -LiteralPath dist\SHA256SUMS -Encoding ascii
 
+      # The release page shows what this version changed, written by hand in
+      # CHANGELOG.md. It is cut out here, in the job that has the sources, so that
+      # the job that can write to the repository never sees them. A tag with no
+      # section is an error rather than a release with nothing to read: the notes
+      # are written before the tag, and the tag is what asks for them.
+      - name: Release notes from the changelog
+        shell: pwsh
+        run: |
+          $version = (Select-String -LiteralPath manifest.ini -Pattern '^VERSION\s*=\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+          $lines = Get-Content -LiteralPath CHANGELOG.md
+          $header = "## [$version]"
+
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i].StartsWith($header)) { $start = $i + 1; break }
+          }
+          if ($start -lt 0) {
+            Write-Host "CHANGELOG.md has no section $header" -ForegroundColor Red
+            Write-Host 'Write what changed in this version before tagging it.' -ForegroundColor Red
+            exit 1
+          }
+
+          $section = @()
+          for ($i = $start; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s+\[') { break }
+            $section += $lines[$i]
+          }
+          $body = ($section -join "`n").Trim()
+          if (-not $body) {
+            Write-Host "the section $header is empty" -ForegroundColor Red
+            exit 1
+          }
+
+          $body | Set-Content -LiteralPath dist\release-notes.md -Encoding utf8
+          Write-Host "release notes for $version, $($section.Count) lines"
+          Write-Host $body
+
       - name: Upload the package
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -81,6 +118,7 @@ jobs:
           path: |
             dist/*.zip
             dist/SHA256SUMS
+            dist/release-notes.md
           if-no-files-found: error
 
   publish:
@@ -106,6 +144,35 @@ jobs:
         run: |
           ls -l dist
 
+          # The body of the release is three parts: how to install, what this
+          # version changed, and a link to everything between the tags. The middle
+          # one was cut out of CHANGELOG.md by the build job - the job that can
+          # write to the repository never sees the sources, only the file the other
+          # job prepared. The file name is written from the tag, so it cannot rot.
+          {
+            echo "## Installing this release"
+            echo
+            echo "1. Download the asset named \`Stracker Delta ${TAG}.zip\` from the"
+            echo "   **Assets** list at the bottom of this page."
+            echo "2. Drag that archive into the Content Manager window. It unpacks and"
+            echo "   installs itself; afterwards there must be"
+            echo "   \`apps/lua/StrackerDelta/StrackerDelta.lua\`."
+            echo "3. Enable **Stracker Delta** in Content Manager -> *Custom* -> *Apps*."
+            echo
+            echo "The address of your stracker server is set in the app, see the README."
+            echo
+            echo "## In this version"
+            echo
+            cat dist/release-notes.md
+            echo
+            previous=$(gh release list --repo "$REPO" --limit 100 --json tagName \
+              --jq ".[] | .tagName" | grep -Fxv "$TAG" | head -n 1)
+            if [ -n "$previous" ]; then
+              echo "**Full Changelog**: https://github.com/$REPO/compare/$previous...$TAG"
+            fi
+          } > notes.md
+          cat notes.md
+
           # This job has no checkout on purpose: the token that can write should not
           # sit next to a copy of the source. gh cannot guess the repository without
           # a git remote, so it is told which one to talk to.
@@ -118,7 +185,7 @@ jobs:
             out=$(gh release create "$TAG" dist/*.zip dist/SHA256SUMS \
               --repo "$REPO" \
               --title "$TAG" \
-              --generate-notes 2>&1)
+              --notes-file notes.md 2>&1)
           fi
           status=$?
 
