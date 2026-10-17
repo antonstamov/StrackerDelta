@@ -67,7 +67,7 @@ jobs:
           if (-not $zip) { throw "pack.cmd reported success but wrote nothing" }
 
           # github.ref_name of tag v0.1.0 is v0.1.0, the v is already in it.
-          if ($zip.Name -notlike "* ${{ github.ref_name }}.zip") {
+          if ($zip.Name -notlike "*.${{ github.ref_name }}.zip") {
             Write-Host "built $($zip.Name), expected the version of the tag" -ForegroundColor Red
             exit 1
           }
@@ -152,7 +152,7 @@ jobs:
           {
             echo "## Installing this release"
             echo
-            echo "1. Download the asset named \`Stracker Delta ${TAG}.zip\` from the"
+            echo "1. Download the asset named \`Stracker.Delta.${TAG}.zip\` from the"
             echo "   **Assets** list at the bottom of this page."
             echo "2. Drag that archive into the Content Manager window. It unpacks and"
             echo "   installs itself; afterwards there must be"
