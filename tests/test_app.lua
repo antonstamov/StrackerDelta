@@ -447,7 +447,10 @@ check('startup request for the lap', env.requests[3]:find('lapdetails') ~= nil, 
 check('laps in the session', #s.laps, 2)
 check('reference loaded automatically', s.reference and s.reference.meta.lapTimeText or nil, '01:18.149')
 check('reference lapid stored', env.storage.lastLapId, 469675)   -- fastest lap of the list
-check('CSV stored', env.savedFiles['apps/lua/StrackerDelta/last_lap.csv'] ~= nil, true)
+-- one profile on disk, not two: cache_lap.csv is the copy, the cache index says
+-- which lap it is, and a second file with the same numbers would only rot
+checkNil('the duplicate profile copy', env.savedFiles['apps/lua/StrackerDelta/last_lap.csv'])
+check('the cache is the profile', env.savedFiles['apps/lua/StrackerDelta/cache_lap.csv'] ~= nil, true)
 local strayWrites = 0; for path in pairs(env.savedFiles) do if path:find('^apps/lua/StrackerDelta/') == nil then strayWrites = strayWrites + 1 end end
 check('no writes outside the app folder', strayWrites, 0)
 appScript.windowDrive()

@@ -700,10 +700,6 @@ loadLap = function(row, force)
     config.lastLapId = info.lapid or row.lapid or 0
     saveLapCache(listCacheKey(), info, positions, speeds, times)
 
-    -- the whole profile is saved next to the app: it can be opened
-    -- and compared with the reference by hand
-    pcall(io.save, 'apps/lua/StrackerDelta/last_lap.csv', lap.toCsv(positions, speeds, times))
-
     log('lap loaded: ' .. tostring(info.lapid) .. ' ' .. tostring(info.lapTimeText) ..
         ' ' .. tostring(info.driver) .. ' ' .. tostring(info.track) ..
         ' points: ' .. #positions)

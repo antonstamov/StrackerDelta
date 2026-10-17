@@ -13,8 +13,8 @@
     The path is checked before anything is copied: a folder without apps\lua is
     almost surely not the game, and a half installed app is worse than none.
 
-    Files that the app writes at runtime (debug.log, cache_lap.csv, cache_index.txt,
-    last_lap.csv) live in the same folder and are never touched.
+    Files that the app writes at runtime (debug.log, cache_lap.csv, cache_index.txt)
+    live in the same folder and are never touched.
 
 .EXAMPLE
     scripts\install.cmd

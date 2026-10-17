@@ -389,7 +389,9 @@ check('a row without a time is last', withGap[2].pos, 2)
 
 -- ---------------------------------------------------------------------------
 heading('CSV')
-local csv = lap.toCsv(positions, speeds, times)
+-- the one CSV the app writes: the profile cache, at full precision. The reference
+-- file in reference/ holds the same profile and is compared line by line.
+local csv = lap.toCache(positions, speeds, times)
 local handle = io.open(outDir .. '/lua_data.csv', 'wb')
 handle:write(csv)
 handle:close()
